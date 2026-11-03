@@ -485,10 +485,10 @@
           <p class="muted">أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التحكم.</p>
           <div class="login-error ${ui.loginError ? '' : 'hidden'}" id="loginError" role="alert">${icon('alert')}<span>${esc(ui.loginError || '')}</span></div>
           <label class="field"><span>اسم المستخدم</span>
-            <div class="input-ic">${icon('users')}<input name="username" autocomplete="username" required dir="ltr" value="${esc(ui.loginUser || '')}" placeholder="username"></div>
+            <div class="input-ic">${icon('users')}<input name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required dir="ltr" value="${esc(ui.loginUser || '')}" placeholder="username"></div>
           </label>
           <label class="field"><span>كلمة المرور</span>
-            <div class="input-ic">${icon('lock')}<input name="password" type="password" autocomplete="current-password" required dir="ltr" placeholder="••••••••">
+            <div class="input-ic">${icon('lock')}<input name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required dir="ltr" placeholder="••••••••">
               <button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="إظهار كلمة المرور" title="إظهار / إخفاء">${icon('eye')}</button></div>
           </label>
           <button type="submit" class="btn btn-primary btn-block" id="loginBtn">${icon('logout', 'flip')} دخول</button>
@@ -571,8 +571,14 @@
 
   function doLogin(form) {
     const d = formData(form);
-    const uname = (d.username || '').toLowerCase();
+    d.username = Store.normalizeCred(d.username);
+    const uname = d.username.toLowerCase();
     if (!uname || !d.password) { loginFail('أدخل اسم المستخدم وكلمة المرور', d.username); return; }
+    // لوحة المفاتيح على العربية: أسماء المستخدمين وكلمات المرور بالأحرف الإنجليزية
+    if (/[\u0621-\u064A]/.test(d.username) || /[\u0621-\u064A]/.test(d.password)) {
+      loginFail('لوحة المفاتيح على اللغة العربية — بدّلها إلى الإنجليزية ثم أعد كتابة اسم المستخدم وكلمة المرور', d.username);
+      return;
+    }
     const locks = getLocks();
     const lk = locks[uname] || { count: 0, until: 0 };
     if (lk.until > Date.now()) {
@@ -615,7 +621,7 @@
     return '';
   }
   const pwInput = (name, label, auto = 'new-password', extra = '') => field(label,
-    `<div class="input-ic">${icon('lock')}<input name="${name}" type="password" autocomplete="${auto}" dir="ltr" ${extra}><button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="إظهار">${icon('eye')}</button></div>`);
+    `<div class="input-ic">${icon('lock')}<input name="${name}" type="password" autocomplete="${auto}" autocapitalize="none" autocorrect="off" spellcheck="false" dir="ltr" ${extra}><button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="إظهار">${icon('eye')}</button></div>`);
 
   function openChangePassword(forced) {
     openModal({

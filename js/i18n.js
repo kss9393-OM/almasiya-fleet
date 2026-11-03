@@ -372,6 +372,7 @@ const I18N = (function () {
     'الملف غير صالح – يجب أن يكون نسخة احتياطية من هذا النظام': 'Invalid file – it must be a backup from this system',
     'تعذّر الحفظ: مساحة التخزين في المتصفح ممتلئة. احذف بعض الصور أو صدّر نسخة احتياطية.': 'Could not save: browser storage is full. Delete some photos or export a backup.',
     'اللغة': 'Language',
+    'لوحة المفاتيح على اللغة العربية — بدّلها إلى الإنجليزية ثم أعد كتابة اسم المستخدم وكلمة المرور': 'Your keyboard is set to Arabic — switch it to English and retype your username and password',
     'المزيد': 'More', 'مركبتي': 'My vehicle', 'الساعات': 'Hours', 'الصيانة': 'Maintenance', 'الميدان': 'Field', 'المهام': 'Tasks', 'الأسطول': 'Fleet',
     'التنقل السريع': 'Quick navigation', 'القائمة الرئيسية': 'Main menu', 'تعذّر حفظ الملف': 'Could not save the file',
     'الهوية البصرية': 'Branding', 'إضافة إلى الأسطول': 'Add to fleet', 'إضافة مركبة / معدة جديدة': 'Add new vehicle / equipment',

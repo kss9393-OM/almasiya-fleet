@@ -59,7 +59,18 @@ const Store = (function () {
     else for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
     return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
   }
+  /** توحيد ما تكتبه لوحات المفاتيح في الجوال: الأرقام العربية (٠-٩ و ۰-۹) تُحوَّل إلى 0-9،
+      وتُحذف علامات الاتجاه والمحارف غير المرئية التي تضيفها لوحة مفاتيح سامسونج أحياناً. */
+  function normalizeCred(s) {
+    return String(s ?? '')
+      .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+      .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00AD]/g, '')
+      .replace(/\u00A0/g, ' ')
+      .trim();
+  }
   function hashPassword(password, salt) {
+    password = normalizeCred(password);
     let h = sha256(salt + ':' + password);
     for (let i = 0; i < 2000; i++) h = sha256(salt + h);
     return h;
@@ -258,5 +269,5 @@ const Store = (function () {
   function setSession(id) { try { localStorage.setItem(SESSION_KEY, id); } catch (e) { /* ignore */ } }
   function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ } }
 
-  return { load, save, reset, size, normalize, fmtDate, getSession, setSession, clearSession, sha256, setPassword, verifyPassword };
+  return { load, save, reset, size, normalize, fmtDate, getSession, setSession, clearSession, sha256, setPassword, verifyPassword, normalizeCred };
 })();
