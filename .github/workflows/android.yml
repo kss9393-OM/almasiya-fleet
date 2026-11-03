@@ -57,12 +57,11 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
-      - name: Generate app icon and splash screen
+      - name: Generate app icon
         working-directory: mobile
         run: >
           npx capacitor-assets generate --android
           --iconBackgroundColor '#0f4c81' --iconBackgroundColorDark '#0f4c81'
-          --splashBackgroundColor '#0b1f33' --splashBackgroundColorDark '#0b1f33'
 
       - name: Decode signing key
         env:

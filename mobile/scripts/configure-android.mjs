@@ -4,7 +4,7 @@
 //  • التوقيع بمفتاح ثابت (إن توفر) حتى تعمل التحديثات فوق النسخة المثبتة
 //  • وضع الحافة للحافة (Edge-to-Edge) المطلوب في Android 15/16 — Galaxy S26 Ultra
 //  • صلاحية الكاميرا لالتقاط صور الأعطال
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync, copyFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,7 +52,31 @@ patch('app/src/main/AndroidManifest.xml', (s) => s.includes('android.permission.
   : s.replace('<uses-permission android:name="android.permission.INTERNET" />',
     '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />'));
 
-// 3) MainActivity: تفعيل الحافة للحافة (Android 15+ يفرضه، ويمرر Capacitor المساحات الآمنة للواجهة)
+// 3) شاشة البداية دون تمدد:
+//    الصورة الكاملة (splash.png) تُمطّ لتملأ الشاشة، وشاشة S26 Ultra أطول من نسبة الصورة فيتمدد الشعار.
+//    الحل: خلفية لونية + الشعار في المنتصف بحجمه الأصلي (layer-list)، وشاشة البداية الأصلية في Android 12+.
+const res = join(android, 'app/src/main/res');
+for (const dir of readdirSync(res)) {
+  if (!dir.startsWith('drawable')) continue;
+  for (const f of ['splash.png', 'splash.xml']) { const p = join(res, dir, f); if (existsSync(p)) rmSync(p); }
+}
+mkdirSync(join(res, 'drawable-nodpi'), { recursive: true });
+copyFileSync(join(here, '..', 'assets', 'splash-logo.png'), join(res, 'drawable-nodpi', 'splash_logo.png'));
+writeFileSync(join(res, 'drawable', 'splash.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="rectangle"><solid android:color="#0b1f33" /></shape></item>
+    <item android:gravity="center"><bitmap android:src="@drawable/splash_logo" android:gravity="center" /></item>
+</layer-list>
+`);
+patch('app/src/main/res/values/styles.xml', (s) => s.includes('windowSplashScreenBackground') ? s : s.replace(
+  '<item name="android:background">@drawable/splash</item>',
+  `<item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">#0b1f33</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">#0f4c81</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>`));
+
+// 4) MainActivity: تفعيل الحافة للحافة (Android 15+ يفرضه، ويمرر Capacitor المساحات الآمنة للواجهة)
 const actDir = join(android, 'app/src/main/java', ...pkg.split('.'));
 mkdirSync(actDir, { recursive: true });
 writeFileSync(join(actDir, 'MainActivity.java'), `package ${pkg};
