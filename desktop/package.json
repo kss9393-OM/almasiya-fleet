@@ -1,0 +1,54 @@
+{
+  "name": "almasiya-fleet-desktop",
+  "productName": "Almasiya Fleet",
+  "version": "2.0.0",
+  "private": true,
+  "description": "نظام إدارة الأسطول والمعدات – الماسية الدولية للمعدات",
+  "author": "Services Square LLC (مربع الخدمات ش.م.م)",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "prepare-www": "node scripts/prepare-www.mjs",
+    "start": "npm run prepare-www && electron .",
+    "dist": "npm run prepare-www && electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "om.almasiya.fleet",
+    "productName": "Almasiya Fleet",
+    "copyright": "© Services Square LLC — مربع الخدمات ش.م.م",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "www/**/*", "assets/**/*", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico",
+      "artifactName": "Almasiya-Fleet-Setup.${ext}",
+      "executableName": "AlmasiyaFleet",
+      "legalTrademarks": "Services Square LLC"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "أسطول الماسية",
+      "uninstallDisplayName": "أسطول الماسية – نظام إدارة الأسطول",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "multiLanguageInstaller": true,
+      "installerLanguages": ["ar_SA", "en_US"],
+      "language": "1025",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      { "provider": "generic", "url": "https://github.com/kss9393-OM/almasiya-fleet/releases/download/windows-latest" }
+    ]
+  }
+}

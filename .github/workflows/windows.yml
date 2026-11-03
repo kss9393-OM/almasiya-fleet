@@ -1,0 +1,75 @@
+# © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م
+# بناء تطبيق ويندوز (مثبّت .exe) تلقائياً مع كل تحديث، واختباره، ونشره.
+# التطبيقات المثبّتة تتحدث تلقائياً من الإصدار "windows-latest".
+name: Windows App
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', 'mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Set version
+        shell: bash
+        run: npm version "2.0.${{ github.run_number }}" --no-git-tag-version --allow-same-version
+
+      - name: Build installer
+        run: npm run dist
+
+      - name: Smoke test (launch the app, check UI and server connection)
+        shell: bash
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1
+          node scripts/smoke-test.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-build
+          path: |
+            desktop/dist/Almasiya-Fleet-Setup.exe
+            desktop/windows-smoke.png
+          if-no-files-found: ignore
+
+      - name: Publish (rolling release used by auto-update)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-latest
+          name: أسطول الماسية – ويندوز
+          make_latest: false
+          overwrite_files: true
+          files: |
+            desktop/dist/Almasiya-Fleet-Setup.exe
+            desktop/dist/Almasiya-Fleet-Setup.exe.blockmap
+            desktop/dist/latest.yml
+          body: |
+            تطبيق ويندوز لنظام إدارة الأسطول والمعدات – الماسية الدولية للمعدات ش.م.م
+            يعمل على Windows 10 و 11 (64-bit)، ويتحدث تلقائياً عند صدور إصدار جديد.
+
+            **التثبيت:** نزّل `Almasiya-Fleet-Setup.exe` وشغّله. إذا ظهرت رسالة «Windows protected your PC» اضغط **More info** ثم **Run anyway**.
+
+            © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م – Services Square LLC
