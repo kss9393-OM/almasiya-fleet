@@ -42,6 +42,8 @@ button, a, select, label { touch-action: manipulation; }
   .topbar-title p { display: none; }
   .menu-btn, #pwBtn, #logoutBtn, .user-chip, .today { display: none !important; }
   .lang-btn { padding: 0 10px; }
+  .sync-state span { display: none; }
+  .sync-state { width: 32px; padding: 0; justify-content: center; }
   .lang-btn span { display: none; }
   .topbar-actions { gap: 8px; }
   .icon-btn { width: 42px; height: 42px; border-radius: 12px; }

@@ -4,11 +4,11 @@
    الاستراتيجية: عرض النسخة المحفوظة فوراً ثم تحديثها في الخلفية،
    فتظهر التحديثات الجديدة عند الفتح التالي.
    ========================================================================= */
-const CACHE = 'almasiya-fleet-v3';
+const CACHE = 'almasiya-fleet-v4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/fonts.css', './css/style.css', './css/mobile.css',
-  './js/config.js', './js/i18n.js', './js/data.js', './js/app.js',
+  './js/config.js', './js/i18n.js', './js/vendor/supabase.js', './js/data.js', './js/app.js',
   './assets/logo.svg', './assets/icons/icon-192.png', './assets/icons/icon-512.png',
   './assets/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2',
   './assets/fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2',

@@ -65,7 +65,16 @@ const APP_CONFIG = {
   maxLoginAttempts: 5,       // عدد المحاولات الخاطئة قبل القفل المؤقت
   lockoutSeconds: 60,        // مدة القفل بالثواني
 
+  // ---------- قاعدة البيانات المركزية (Supabase) ----------
+  // المفتاح العام (publishable) مخصص للتطبيقات وآمن للنشر؛ الحماية الفعلية بصلاحيات الخادم (RLS)
+  supabase: {
+    url: 'https://hpyfzkdxknkqcdovktwq.supabase.co',
+    key: 'sb_publishable_tQij7f-6j_Lu7wR1ZLr4NA_StHsJpCo',
+    emailDomain: 'almasiya-fleet.local',   // أسماء المستخدمين تُحوَّل داخلياً إلى user@domain
+    photosBucket: 'report-photos',
+  },
+
   // ---------- التخزين ----------
   storageKey: 'almasiya_fleet_v1',
-  version: '1.1.0',
+  version: '2.0.0',
 };

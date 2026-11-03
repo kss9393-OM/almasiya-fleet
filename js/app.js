@@ -101,8 +101,9 @@
   /* =======================================================================
      4) الحالة العامة
      ======================================================================= */
-  let db = Store.load();
+  let db = null;          // يُحمَّل من الخادم بعد تسجيل الدخول (Store.load)
   let me = null;
+  let offlineMode = false;
   const ui = {
     route: '',
     fleet: { q: '', status: '', type: '', plateType: '' },
@@ -129,7 +130,7 @@
 
   /* ---------- الإعدادات والهوية ---------- */
   function S() {
-    const s = db.settings || {};
+    const s = (db && db.settings) || {};
     return {
       systemName: I18N.lang === 'en' ? (s.systemNameEn || APP_CONFIG.systemNameEn || s.systemName || APP_CONFIG.systemName) : (s.systemName || APP_CONFIG.systemName),
       systemNameAr: s.systemName || APP_CONFIG.systemName,
@@ -228,12 +229,18 @@
      ======================================================================= */
   function log(text) {
     db.activity.unshift({ id: uid('a'), at: new Date().toISOString(), by: me ? me.id : '', text });
-    db.activity = db.activity.slice(0, 80);
   }
+  /** حفظ التعديلات: تُعرض فوراً، وتُرسل للخادم في الخلفية */
   function commit(msg) {
     if (msg) log(msg);
-    if (!Store.save(db)) toast('تعذّر الحفظ: مساحة التخزين في المتصفح ممتلئة. احذف بعض الصور أو صدّر نسخة احتياطية.', 'error');
     render();
+    return Store.save().then((r) => {
+      if (r.ok) return r;
+      if (r.error === 'NETWORK') toast('لا يوجد اتصال بالإنترنت — سيُحفظ التعديل تلقائياً عند عودة الاتصال', 'warn');
+      else if (r.error === 'PERMISSION') toast('لا تملك صلاحية هذا الإجراء — تم التراجع عنه', 'error');
+      else toast('تعذّر الحفظ على الخادم: ' + r.error, 'error');
+      return r;
+    });
   }
   function toast(msg, type = 'success') {
     const el = document.createElement('div');
@@ -406,6 +413,7 @@
     $('#alertsBtn').innerHTML = icon('bell') + (alertsN ? `<span class="pill">${alertsN}</span>` : '');
     $('#userChip').innerHTML = `<div class="who"><b>${esc(me.name)}</b><small>${ROLES[me.role]}</small></div>${avatar(me)}`;
     $('#logoutBtn').innerHTML = icon('logout');
+    renderSync();
     $('#pwBtn').innerHTML = icon('key');
     $('.menu-btn').innerHTML = icon('menu');
 
@@ -439,7 +447,7 @@
 
   function render() {
     applyBranding();
-    if (!me) { setBars('DARK'); showLogin(); return; }
+    if (!me || !db) { setBars('DARK'); showLogin(); return; }
     setBars('LIGHT');
     $('#login-screen').classList.add('hidden');
     $('#app').classList.remove('hidden');
@@ -569,7 +577,7 @@
     if (pw) { pw.value = ''; pw.focus(); }
   }
 
-  function doLogin(form) {
+  async function doLogin(form) {
     const d = formData(form);
     d.username = Store.normalizeCred(d.username);
     const uname = d.username.toLowerCase();
@@ -585,8 +593,15 @@
       loginFail(`تم إيقاف المحاولات مؤقتاً بسبب تكرار الأخطاء. حاول بعد ${Math.ceil((lk.until - Date.now()) / 1000)} ثانية.`, d.username);
       return;
     }
-    const u = db.users.find((x) => (x.username || '').toLowerCase() === uname);
-    if (!u || !Store.verifyPassword(u, d.password)) {
+    const btn = $('#loginBtn');
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> جارٍ الدخول…'; }
+    const restore = () => { const b = $('#loginBtn'); if (b) { b.disabled = false; if (b.dataset.label) b.innerHTML = b.dataset.label; } };
+    try {
+      await Store.signIn(uname, d.password);
+    } catch (e) {
+      restore();
+      const m = String(e && e.message || '');
+      if (/fetch|network/i.test(m)) { loginFail('تعذّر الاتصال بالخادم — تحقق من اتصال الإنترنت', d.username); return; }
       lk.count = (lk.count || 0) + 1;
       if (lk.count >= APP_CONFIG.maxLoginAttempts) { lk.until = Date.now() + APP_CONFIG.lockoutSeconds * 1000; lk.count = 0; }
       locks[uname] = lk;
@@ -597,27 +612,57 @@
         : `اسم المستخدم أو كلمة المرور غير صحيحة${left <= 2 ? ` (متبقي ${left} ${left === 1 ? 'محاولة' : 'محاولات'})` : ''}`, d.username);
       return;
     }
-    if (u.active === false) { loginFail('هذا الحساب موقوف. تواصل مع مدير النظام.', d.username); return; }
     delete locks[uname];
     setLocks(locks);
-    me = u;
+    const ok = await startSession(true);
+    restore();
+    if (!ok) return;
     ui.loginError = '';
     ui.loginUser = '';
-    u.lastLogin = new Date().toISOString();
-    Store.setSession(u.id);
-    ui.route = '';
-    history.replaceState(null, '', location.pathname + location.search);
-    log(`تسجيل دخول ${u.name}`);
-    Store.save(db);
+    if (me.mustChange) openChangePassword(true);
+    else toast(`مرحباً ${me.name}`, 'info');
+  }
+
+  /** بعد تسجيل الدخول أو عند فتح التطبيق بجلسة محفوظة: تحميل البيانات وتحديد المستخدم */
+  async function startSession(fresh) {
+    let res;
+    try {
+      res = await Store.load();
+    } catch (e) {
+      await Store.signOut();
+      loginFail('تعذّر تحميل البيانات من الخادم — حاول مرة أخرى', ui.loginUser || '');
+      showLogin();
+      return false;
+    }
+    db = res.db;
+    offlineMode = res.offline;
+    const session = await Store.getSession();
+    const u = session && db.users.find((x) => x.authId === session.user.id);
+    if (!u || u.active === false) {
+      await Store.signOut();
+      db = null; me = null;
+      ui.loginError = u ? 'هذا الحساب موقوف. تواصل مع مدير النظام.' : 'هذا الحساب غير مسجل في النظام. تواصل مع مدير النظام.';
+      render();
+      return false;
+    }
+    me = u;
+    if (fresh) {
+      ui.route = '';
+      history.replaceState(null, '', location.pathname + location.search);
+      Store.touchLogin().catch(() => {});
+      log(`تسجيل دخول ${u.name}`);
+      Store.save();
+    }
+    Store.subscribe();
     render();
-    if (u.mustChange) openChangePassword(true);
-    else toast(`مرحباً ${u.name}`, 'info');
+    if (offlineMode) toast('أنت غير متصل — تُعرض آخر بيانات محفوظة، وستُرسل تعديلاتك عند عودة الاتصال', 'warn');
+    return true;
   }
 
   function passwordProblem(pw) {
     const min = APP_CONFIG.minPasswordLength;
     if (!pw || pw.length < min) return `كلمة المرور يجب ألا تقل عن ${min} أحرف`;
-    if (!/[A-Za-z؀-ۿ]/.test(pw) || !/\d/.test(pw)) return 'كلمة المرور يجب أن تحتوي على حروف وأرقام';
+    if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'كلمة المرور يجب أن تحتوي على حروف إنجليزية وأرقام';
     return '';
   }
   const pwInput = (name, label, auto = 'new-password', extra = '') => field(label,
@@ -636,13 +681,17 @@
           ${pwInput('confirm', 'تأكيد كلمة المرور الجديدة', 'new-password', 'required')}
           <p class="cell-sub">${APP_CONFIG.minPasswordLength} أحرف على الأقل، وتحتوي على حروف وأرقام.</p>
         </div>`,
-      onSubmit: (d) => {
-        if (!Store.verifyPassword(me, d.current)) { toast('كلمة المرور الحالية غير صحيحة', 'error'); return false; }
+      onSubmit: async (d) => {
+        ['current', 'next', 'confirm'].forEach((k) => { d[k] = Store.normalizeCred(d[k]); });
         const p = passwordProblem(d.next);
         if (p) { toast(p, 'error'); return false; }
         if (d.next !== d.confirm) { toast('كلمتا المرور غير متطابقتين', 'error'); return false; }
         if (d.next === d.current) { toast('اختر كلمة مرور مختلفة عن الحالية', 'error'); return false; }
-        Store.setPassword(me, d.next, false);
+        if (!(await Store.verifyPassword(me.username, d.current))) { toast('كلمة المرور الحالية غير صحيحة', 'error'); return false; }
+        try {
+          await Store.changeOwnPassword(d.next);
+        } catch (e) { toast('تعذّر تغيير كلمة المرور: ' + (e.message || ''), 'error'); return false; }
+        me.mustChange = false;
         commit(`تغيير كلمة المرور – ${me.name}`);
         toast('تم تغيير كلمة المرور بنجاح');
       },
@@ -1268,6 +1317,25 @@
       </div>
     </div>`;
   }
+  /** صورة بلاغ: إما مسار في التخزين السحابي (يُحمَّل برابط مؤقت) أو صورة قديمة مضمّنة */
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+  function photoImg(p, alt, rid, i) {
+    const inline = /^data:/.test(p);
+    const src = inline ? p : (Store.cachedPhotoUrl(p) || BLANK);
+    return `<img src="${src}" ${inline ? '' : `data-photo="${esc(p)}"`} alt="${esc(alt)}" data-action="photo-view" data-r="${esc(rid)}" data-i="${i}" loading="lazy">`;
+  }
+  function resolvePhotos(root) {
+    if (!root || root.nodeType !== 1) return;
+    const imgs = Array.from(root.querySelectorAll('img[data-photo]')).filter((im) => im.src === BLANK || im.src.endsWith(BLANK.slice(-10)));
+    if (!imgs.length) return;
+    const paths = Array.from(new Set(imgs.map((im) => im.dataset.photo)));
+    Store.photoUrls(paths).then((urls) => {
+      const map = new Map(paths.map((p, k) => [p, urls[k]]));
+      imgs.forEach((im) => { const u = map.get(im.dataset.photo); if (u) im.src = u; });
+    }).catch(() => {});
+  }
+  new MutationObserver((recs) => recs.forEach((r) => r.addedNodes.forEach(resolvePhotos))).observe(document.body, { childList: true, subtree: true });
+
   const photoPreview = () => ui.pendingPhotos.map((p, i) => `<span class="rm"><img src="${p}" alt="صورة ${i + 1}"><button type="button" data-action="photo-remove" data-i="${i}" aria-label="حذف">×</button></span>`).join('');
 
   function reportCard(r) {
@@ -1278,7 +1346,7 @@
         ${r.kind === 'breakdown' ? `<span class="badge b-bad">${icon('alert')} بلاغ عطل – ${esc(SEVERITY[r.severity] || '')}</span>` : '<span class="badge b-info">ملاحظة</span>'}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${plate(v, 'sm')}<span class="cell-sub">${esc(v ? v.type + ' – ' + v.make : '')}</span>${v ? statusBadge(v.status) : ''}</div>
       <div class="r-text" data-raw>${esc(r.text)}</div>
-      ${r.photos && r.photos.length ? `<div class="thumbs">${r.photos.map((p, i) => `<img src="${p}" alt="صورة ${i + 1}" data-action="photo-view" data-r="${r.id}" data-i="${i}">`).join('')}</div>` : ''}
+      ${r.photos && r.photos.length ? `<div class="thumbs">${r.photos.map((p, i) => photoImg(p, `صورة ${i + 1}`, r.id, i)).join('')}</div>` : ''}
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${t ? `<span class="cell-sub">مهمة الصيانة:</span> <span class="badge ${t.status === 'done' ? 'b-ok' : 'b-warn'}">${TASK_STATUS[t.status]}</span>${me.role !== 'driver' ? `<button class="btn-link" data-action="task-edit" data-id="${t.id}">فتح المهمة</button>` : ''}`
           : (r.kind === 'note' && can('task.create') ? `<button class="btn btn-ghost btn-sm" data-action="report-to-task" data-id="${r.id}">${icon('wrench')} تحويل إلى مهمة صيانة</button>` : '')}
@@ -1286,11 +1354,25 @@
     </div>`;
   }
 
-  function submitField(form) {
+  async function submitField(form) {
     const d = formData(form);
     if (!d.vehicleId || !d.text) { toast('اختر المعدة واكتب الوصف', 'error'); return; }
     const v = vehById(d.vehicleId);
-    const r = { id: uid('r'), vehicleId: d.vehicleId, by: me.id, at: new Date().toISOString(), kind: d.kind, severity: d.kind === 'breakdown' ? d.severity : '', text: d.text, location: d.location || '', photos: ui.pendingPhotos.slice(), taskId: '' };
+    const rid = uid('r');
+    // رفع الصور إلى التخزين السحابي أولاً (تُحفظ مساراتها في البلاغ)
+    let photos = [];
+    if (ui.pendingPhotos.length) {
+      const btn = $('#fieldSubmit');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جارٍ رفع الصور…'; }
+      try {
+        photos = await Promise.all(ui.pendingPhotos.map((p, i) => Store.uploadPhoto(`${rid}/${i + 1}-${Date.now().toString(36)}.jpg`, p)));
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = icon('upload') + ' إعادة المحاولة'; }
+        toast('تعذّر رفع الصور — تحقق من الاتصال ثم أعد المحاولة', 'error');
+        return;
+      }
+    }
+    const r = { id: rid, vehicleId: d.vehicleId, by: me.id, at: new Date().toISOString(), kind: d.kind, severity: d.kind === 'breakdown' ? d.severity : '', text: d.text, location: d.location || '', photos, taskId: '' };
     db.reports.push(r);
     if (d.kind === 'breakdown') {
       const t = { id: uid('t'), title: `بلاغ عطل: ${d.text.slice(0, 50)}${d.text.length > 50 ? '…' : ''} – ${vShort(v)}`, description: d.text, type: 'maintenance', mkind: 'corrective', vehicleId: v.id, projectId: v.assignment?.projectId || '', assigneeId: '', priority: d.severity === 'low' ? 'low' : d.severity === 'medium' ? 'medium' : 'high', status: 'new', dueDate: today(), createdBy: me.id, createdAt: r.at, source: 'field', reportId: r.id };
@@ -1377,7 +1459,7 @@
         ${t.type === 'maintenance' || !id ? field('نوع الصيانة', `<select name="mkind">${opts(optsMap(MKIND), t.mkind || 'corrective', '—')}</select><span class="hint">إتمام «صيانة دورية» يحدّث موعد الصيانة القادمة تلقائياً</span>`) : ''}
       </div>
       ${report ? `<div class="info-box" style="margin-top:14px"><h4>${icon('camera')} البلاغ الميداني المرتبط</h4><p data-raw>${esc(report.text)}</p><div class="cell-sub" style="margin:6px 0">${esc(uName(report.by))} • ${fmtDateTime(report.at)}${report.location ? ' • ' + esc(report.location) : ''}</div>
-        ${report.photos?.length ? `<div class="thumbs">${report.photos.map((p, i) => `<img src="${p}" alt="صورة" data-action="photo-view" data-r="${report.id}" data-i="${i}">`).join('')}</div>` : ''}</div>` : ''}
+        ${report.photos?.length ? `<div class="thumbs">${report.photos.map((p, i) => photoImg(p, 'صورة', report.id, i)).join('')}</div>` : ''}</div>` : ''}
       ${id ? `<p class="cell-sub" style="margin-top:12px">أنشأها ${esc(uName(t.createdBy))} • ${fmtDateTime(t.createdAt)}${t.doneAt ? ' • أُغلقت ' + fmtDateTime(t.doneAt) : ''}</p>` : ''}`,
       onSubmit: (d) => {
         if (id) {
@@ -1612,7 +1694,7 @@
       body: `<div class="form-grid two">
         ${field('الاسم الكامل *', `<input name="name" required value="${esc(u.name || '')}">`, 'full')}
         ${field('الدور *', `<select name="role" ${id === me.id ? 'disabled' : ''}>${opts(roles.map((r) => ({ value: r, label: ROLES[r] })), u.role)}</select>`)}
-        ${field('اسم المستخدم *', `<input name="username" required value="${esc(u.username || '')}" dir="ltr" style="text-align:right">`)}
+        ${field('اسم المستخدم *', `<input name="username" required value="${esc(u.username || '')}" dir="ltr" style="text-align:right" autocapitalize="none" autocorrect="off" spellcheck="false" ${id ? 'readonly' : ''}>${id ? '<span class="hint">لا يمكن تغيير اسم المستخدم بعد الإنشاء</span>' : ''}`)}
         ${field('رقم الهاتف', `<input name="phone" value="${esc(u.phone || '')}" dir="ltr" style="text-align:right" placeholder="+968">`)}
         ${field('الحالة', `<select name="active" ${id === me.id ? 'disabled' : ''}>${opts([{ value: '1', label: 'نشط' }, { value: '0', label: 'موقوف' }], u.active !== false ? '1' : '0')}</select>`)}
         <h4 class="form-sec">${id ? 'إعادة تعيين كلمة المرور (اختياري)' : 'كلمة المرور'}</h4>
@@ -1620,26 +1702,48 @@
         ${pwInput('password', id ? 'كلمة مرور جديدة' : 'كلمة المرور المؤقتة *', 'new-password', id ? 'placeholder="اتركها فارغة دون تغيير"' : 'required')}
         <label class="check field" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="mustChange" value="1" checked> إلزامه بتغييرها عند الدخول</label>`}
       </div>`,
-      onSubmit: (d) => {
-        const dup = db.users.find((x) => x.id !== id && (x.username || '').toLowerCase() === d.username.toLowerCase());
-        if (dup) { toast('اسم المستخدم مستخدم مسبقاً', 'error'); return false; }
-        if (!/^[A-Za-z0-9._-]{3,30}$/.test(d.username)) { toast('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات', 'error'); return false; }
+      onSubmit: async (d) => {
+        d.username = Store.normalizeCred(d.username).toLowerCase();
+        if (d.password) d.password = Store.normalizeCred(d.password);
+        if (!id) {
+          const dup = db.users.find((x) => (x.username || '').toLowerCase() === d.username);
+          if (dup) { toast('اسم المستخدم مستخدم مسبقاً', 'error'); return false; }
+          if (!/^[a-z0-9._-]{3,30}$/.test(d.username)) { toast('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات', 'error'); return false; }
+        }
         if (d.password) { const p = passwordProblem(d.password); if (p) { toast(p, 'error'); return false; } }
-        const data = { name: d.name, username: d.username, phone: d.phone };
-        if (id !== me.id) { data.role = d.role; data.active = d.active !== '0'; }
-        if (id) {
-          Object.assign(u, data);
-          if (d.password && id !== me.id) Store.setPassword(u, d.password, !!d.mustChange);
-          commit(d.password ? `تعديل بيانات المستخدم ${u.name} وإعادة تعيين كلمة المرور` : `تعديل بيانات المستخدم ${u.name}`);
-        } else {
-          const nu = Object.assign({ id: uid('u') }, data);
-          Store.setPassword(nu, d.password, !!d.mustChange);
-          db.users.push(nu);
-          commit(`إضافة ${ROLES[data.role]}: ${data.name}`);
+        const fields = { name: d.name, phone: d.phone || '' };
+        if (id !== me.id) { fields.role = d.role; fields.active = d.active !== '0'; }
+        try {
+          if (id) {
+            const nu = await Store.updateProfile(id, fields);
+            Object.assign(u, nu);
+            if (d.password && id !== me.id) await Store.adminUsers({ action: 'set_password', uid: id, password: d.password, mustChange: !!d.mustChange });
+            commit(d.password ? `تعديل بيانات المستخدم ${u.name} وإعادة تعيين كلمة المرور` : `تعديل بيانات المستخدم ${u.name}`);
+          } else {
+            await Store.adminUsers(Object.assign({ action: 'create', username: d.username, password: d.password, mustChange: !!d.mustChange }, fields));
+            await Store.loadAll();
+            commit(`إضافة ${ROLES[fields.role]}: ${fields.name}`);
+          }
+        } catch (e) {
+          toast(userErrorText(e.message), 'error');
+          return false;
         }
         toast(d.password ? 'تم حفظ المستخدم وكلمة المرور' : 'تم حفظ المستخدم');
       },
     });
+  }
+
+  function userErrorText(code) {
+    return ({
+      USERNAME_TAKEN: 'اسم المستخدم مستخدم مسبقاً',
+      BAD_USERNAME: 'اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات',
+      PASSWORD_TOO_SHORT: `كلمة المرور يجب ألا تقل عن ${APP_CONFIG.minPasswordLength} أحرف`,
+      PASSWORD_WEAK: 'كلمة المرور يجب أن تحتوي على حروف إنجليزية وأرقام',
+      FORBIDDEN: 'لا تملك صلاحية هذا الإجراء',
+      NO_PERMISSION: 'لا تملك صلاحية هذا الإجراء',
+      NETWORK: 'لا يوجد اتصال بالإنترنت',
+      CANNOT_DELETE_SELF: 'لا يمكنك حذف حسابك',
+    })[code] || ('تعذّر تنفيذ العملية: ' + code);
   }
 
   /* =======================================================================
@@ -1655,8 +1759,6 @@
 
   function viewSettings() {
     const s = S();
-    const used = Store.size();
-    const quota = 5 * 1024 * 1024;
     const logo = ui.pendingLogo || s.logo;
     return `<form data-form="settings">
       <div class="grid-2">
@@ -1693,13 +1795,11 @@
           </div>
           <div class="card">
             <div class="card-head"><h3>${icon('database')} قاعدة البيانات والنسخ الاحتياطي</h3></div>
-            <div class="cell-sub" style="margin-bottom:6px">المساحة المستخدمة في المتصفح: <b class="num">${num(used / 1024, 1)} KB</b> من حوالي 5 MB</div>
-            <div class="storage-meter" style="margin-bottom:14px"><i style="width:${Math.min(100, (used / quota) * 100)}%"></i></div>
+            <div class="notice" style="margin-bottom:12px">${icon('database')}<span>البيانات محفوظة في قاعدة بيانات مركزية (Supabase) ومتزامنة لحظياً بين الموقع وتطبيق أندرويد وجميع الأجهزة. تُؤخذ نسخ احتياطية من الخادم، ويمكنك أيضاً تصدير نسخة بنفسك.</span></div>
             <div class="cell-sub" style="margin-bottom:12px">${db.vehicles.length} معدة • ${db.users.length} مستخدم • ${db.timesheets.length} سجل ساعات • ${db.tasks.length} مهمة • ${db.reports.length} بلاغ • ${db.invoices.length} فاتورة</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="button" class="btn btn-ghost" data-action="backup-export">${icon('download')} تصدير نسخة احتياطية</button>
               <label class="btn btn-ghost" style="cursor:pointer">${icon('upload')} استيراد نسخة<input type="file" accept="application/json,.json" data-change="backup-import" hidden></label>
-              <button type="button" class="btn btn-ghost" data-action="backup-reset" style="color:var(--bad)">${icon('refresh')} إعادة البيانات التجريبية</button>
             </div>
           </div>
         </div>
@@ -1740,7 +1840,13 @@
      24) معالجات الأحداث
      ======================================================================= */
   const ACTIONS = {
-    'logout': () => { if (me) { log(`تسجيل خروج ${me.name}`); Store.save(db); } me = null; ui.loginError = ''; ui.loginUser = ''; Store.clearSession(); closeModal(); render(); },
+    'logout': async () => {
+      if (me && db) { log(`تسجيل خروج ${me.name}`); await Store.save(); }
+      closeModal();
+      await Store.signOut();
+      me = null; db = null; ui.loginError = ''; ui.loginUser = '';
+      render();
+    },
     'change-password': () => openChangePassword(false),
     'lang-toggle': () => I18N.toggle(),
     'pw-toggle': (d, el) => {
@@ -1818,7 +1924,14 @@
     // الميدان
     'field-filter': (d) => { ui.field = d.k; render(); },
     'photo-remove': (d) => { ui.pendingPhotos.splice(Number(d.i), 1); $('#photoPreview').innerHTML = photoPreview(); },
-    'photo-view': (d) => { const r = db.reports.find((x) => x.id === d.r); if (r) openModal({ title: 'صورة البلاغ', size: 'lg', body: `<img class="img-full" src="${r.photos[Number(d.i)]}" alt="صورة">` }); },
+    'photo-view': async (d) => {
+      const r = db.reports.find((x) => x.id === d.r);
+      if (!r) return;
+      const p = r.photos[Number(d.i)];
+      const src = /^data:/.test(p) ? p : (await Store.photoUrls([p]))[0];
+      if (src) openModal({ title: 'صورة البلاغ', size: 'lg', body: `<img class="img-full" src="${esc(src)}" alt="صورة">` });
+      else toast('تعذّر تحميل الصورة', 'error');
+    },
     'report-to-task': (d) => {
       const r = db.reports.find((x) => x.id === d.id);
       const v = vehById(r.vehicleId);
@@ -1854,7 +1967,10 @@
     'user-edit': (d) => openUser(d.id),
     'user-delete': (d) => {
       const u = userById(d.id);
-      confirmBox(`حذف المستخدم <b>${esc(u.name)}</b>؟ يُفضّل إيقافه بدلاً من حذفه للحفاظ على السجلات.`, () => {
+      confirmBox(`حذف المستخدم <b>${esc(u.name)}</b>؟ يُفضّل إيقافه بدلاً من حذفه للحفاظ على السجلات.`, async () => {
+        try {
+          await Store.adminUsers({ action: 'delete', uid: u.id });
+        } catch (e) { toast(userErrorText(e.message), 'error'); return; }
         db.users = db.users.filter((x) => x.id !== u.id);
         commit(`حذف المستخدم ${u.name}`);
         toast('تم حذف المستخدم', 'info');
@@ -1899,15 +2015,6 @@
         if (!NATIVE) toast('تم تنزيل النسخة الاحتياطية');
       });
     },
-    'backup-reset': () => confirmBox('سيتم حذف جميع البيانات الحالية واستبدالها بالبيانات التجريبية. هل أنت متأكد؟', () => {
-      const keepId = me.id;
-      db = Store.reset();
-      me = userById(keepId) || db.users[0];
-      Store.setSession(me.id);
-      render();
-      toast('تمت إعادة البيانات التجريبية – كلمات المرور عادت إلى القيمة الأولية', 'info');
-      if (me.mustChange) openChangePassword(true);
-    }, 'إعادة التعيين'),
   };
 
   const CHANGES = {
@@ -1966,11 +2073,16 @@
       fr.onload = () => {
         try {
           const data = JSON.parse(fr.result);
-          if (!data || !Array.isArray(data.vehicles) || !Array.isArray(data.users)) throw new Error('bad');
-          confirmBox(`استيراد النسخة (${data.vehicles.length} معدة، ${data.users.length} مستخدم) واستبدال البيانات الحالية؟`, () => {
-            db = Store.normalize(data);
-            me = userById(me.id) || db.users.find((u) => u.role === 'developer') || db.users[0];
-            Store.setSession(me.id);
+          if (!data || !Array.isArray(data.vehicles)) throw new Error('bad');
+          const T = ['vehicles', 'projects', 'timesheets', 'tasks', 'reports', 'invoices'];
+          const total = T.reduce((n, t) => n + (Array.isArray(data[t]) ? data[t].length : 0), 0);
+          confirmBox(`استيراد ${num(total)} سجلاً من النسخة إلى قاعدة البيانات المركزية؟ تُحدَّث السجلات الموجودة بنفس الرقم وتُضاف الجديدة، ولا يُحذف شيء. حسابات المستخدمين لا تُستورد.`, () => {
+            T.forEach((t) => {
+              if (!Array.isArray(data[t])) return;
+              const byId = new Map(db[t].map((r) => [r.id, r]));
+              data[t].forEach((r) => { if (r && r.id) byId.set(r.id, r); });
+              db[t] = Array.from(byId.values());
+            });
             commit('استيراد نسخة احتياطية');
             toast('تم استيراد البيانات');
           }, 'استيراد', false);
@@ -2030,7 +2142,41 @@
     if (e.key === 'Escape') { if ($('#modal-root').innerHTML) { if (!modalLocked) closeModal(); } else closeSidebar(); }
   });
   window.addEventListener('hashchange', render);
-  window.addEventListener('storage', (e) => { if (e.key === APP_CONFIG.storageKey) { db = Store.load(); if (me) me = userById(me.id) || null; render(); } });
+  /* ---------- المزامنة اللحظية: تحديث الشاشة عند وصول تعديلات من أجهزة أخرى ---------- */
+  let remoteTimer = null;
+  function scheduleRemoteRender() {
+    clearTimeout(remoteTimer);
+    remoteTimer = setTimeout(() => {
+      // لا نعيد الرسم أثناء الكتابة في حقل داخل الصفحة حتى لا يضيع ما يُكتب
+      const a = document.activeElement;
+      if (a && a.closest && a.closest('#view') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { a.addEventListener('blur', scheduleRemoteRender, { once: true }); return; }
+      if (!me || !db) return;
+      const u = db.users.find((x) => x.id === me.id);
+      if (!u || u.active === false) { ACTIONS.logout(); return; }
+      me = u;
+      render();
+    }, 250);
+  }
+  Store.on((type, detail) => {
+    if (type === 'remote' || type === 'reload') scheduleRemoteRender();
+    if (type === 'status') renderSync();
+  });
+
+  function renderSync() {
+    const el = $('#syncState');
+    if (!el) return;
+    const st = Store.status;
+    const map = {
+      idle: ['ok', 'متزامن', 'check'],
+      saving: ['busy', 'جارٍ الحفظ…', 'refresh'],
+      offline: ['off', 'غير متصل', 'alert'],
+      error: ['err', 'خطأ في الحفظ', 'alert'],
+    };
+    const [cls, label, ic] = map[st] || map.idle;
+    el.className = `sync-state ${cls}`;
+    el.innerHTML = `${icon(ic)}<span>${label}</span>`;
+    el.title = label;
+  }
 
   /* =======================================================================
      25) التشغيل
@@ -2053,10 +2199,13 @@
     if (!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
-    const sid = Store.getSession();
-    const u = sid ? userById(sid) : null;
-    me = u && u.active !== false ? u : null;
+    // جلسة محفوظة؟ تحميل البيانات مباشرة دون إعادة تسجيل الدخول
     render();
-    if (me && me.mustChange) openChangePassword(true);
+    Store.getSession().then(async (session) => {
+      if (!session) return;
+      $('#login-screen').innerHTML = `<div class="boot">${icon('refresh', 'spin')}<span>جارٍ تحميل البيانات…</span></div>`;
+      const ok = await startSession(false);
+      if (ok && me.mustChange) openChangePassword(true);
+    }).catch(() => render());
   })();
 })();
