@@ -14,6 +14,7 @@
 const APP_CONFIG = {
   // ---------- الهوية ----------
   systemName: 'نظام إدارة الأسطول والمعدات',
+  systemNameEn: 'Fleet & Equipment Management System',
   companyName: 'الماسية الدولية للمعدات ش.م.م',
   companyNameEn: 'Al Masiya International Equipment LLC',
   logo: 'assets/logo.svg',
@@ -52,6 +53,10 @@ const APP_CONFIG = {
 
   // ---------- الحقوق ----------
   copyrightHolder: 'مربع الخدمات ش.م.م',
+  copyrightHolderEn: '',   // الاسم الإنجليزي لصاحب الحقوق (يظهر في الواجهة الإنجليزية إن وُجد)
+
+  // ---------- اللغة ----------
+  defaultLanguage: 'ar',   // 'ar' أو 'en' — اللغة عند أول زيارة، ويمكن للمستخدم تبديلها من الزر
 
   // ---------- الأمان وتسجيل الدخول ----------
   // كلمة المرور الأولية لجميع الحسابات التجريبية؛ يُطلب تغييرها إجبارياً عند أول دخول

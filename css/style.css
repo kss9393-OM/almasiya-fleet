@@ -574,6 +574,31 @@ input[type=color] { width: 46px; height: 38px; padding: 2px; border: 1px solid v
 .toast.hide { opacity: 0; transform: translateY(8px); transition: .25s; }
 
 /* ------------------------------------------------------------------ */
+/* Language toggle & LTR (English) adjustments                         */
+/* ------------------------------------------------------------------ */
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text);
+}
+.lang-btn:hover { background: var(--primary-soft); border-color: var(--border-strong); }
+.lang-btn .ic { width: 16px; height: 16px; color: var(--primary); }
+.login-main { position: relative; }
+.login-lang { position: absolute; top: 24px; inset-inline-end: 24px; }
+
+[dir=ltr] body { font-size: 14px; }
+[dir=ltr] .nav a.on { box-shadow: inset 3px 0 0 var(--accent); }
+[dir=ltr] .input-ic > .ic { right: auto; left: 11px; }
+[dir=ltr] .input-ic input { padding-left: 36px !important; padding-right: 12px !important; }
+[dir=ltr] .input-ic:has(.pw-toggle) input { padding-right: 42px !important; }
+[dir=ltr] .pw-toggle { left: auto; right: 6px; }
+[dir=ltr] input[style*="text-align:right"] { text-align: left !important; }
+[dir=ltr] select.status-select { background-position: right 9px center; }
+[dir=ltr] .ic.flip { transform: none; }
+[dir=ltr] .kcard .actions .ibtn .ic { transform: scaleX(-1); }
+[dir=ltr] .welcome::after { inset-inline-end: -40px; }
+
+/* ------------------------------------------------------------------ */
 /* Responsive                                                          */
 /* ------------------------------------------------------------------ */
 @media (max-width: 1280px) {
@@ -598,6 +623,7 @@ input[type=color] { width: 46px; height: 38px; padding: 2px; border: 1px solid v
   .view { padding: 16px; }
   .topbar { padding: 12px 16px; }
   .today, .user-chip .who { display: none; }
+  .lang-btn span { display: none; }
   .kpi-row, .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-grid { gap: 10px; }
   .vp-grid, .form-grid, .form-grid.two, .inv-meta { grid-template-columns: minmax(0, 1fr); }

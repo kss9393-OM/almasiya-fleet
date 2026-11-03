@@ -91,6 +91,7 @@
     database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>',
     palette: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 2-.8 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A5.6 5.6 0 0 0 22 10c0-4.4-4.5-8-10-8z"/>',
     activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>',
     lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
     key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
     eyeOff: '<path d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M1 1l22 22"/>',
@@ -130,7 +131,9 @@
   function S() {
     const s = db.settings || {};
     return {
-      systemName: s.systemName || APP_CONFIG.systemName,
+      systemName: I18N.lang === 'en' ? (s.systemNameEn || APP_CONFIG.systemNameEn || s.systemName || APP_CONFIG.systemName) : (s.systemName || APP_CONFIG.systemName),
+      systemNameAr: s.systemName || APP_CONFIG.systemName,
+      systemNameEn: s.systemNameEn || APP_CONFIG.systemNameEn || '',
       companyName: s.companyName || APP_CONFIG.companyName,
       companyNameEn: s.companyNameEn || APP_CONFIG.companyNameEn,
       logo: s.logo || APP_CONFIG.logo,
@@ -148,13 +151,14 @@
   function applyBranding() {
     const s = S();
     applyTheme(s.theme);
-    document.title = `${s.systemName} | ${s.companyName}`;
+    document.title = I18N.tr(`${s.systemName} | ${I18N.lang === 'en' && s.companyNameEn ? s.companyNameEn : s.companyName}`);
     $('#brandSystem').textContent = s.systemName;
-    $('#brandCompany').textContent = s.companyName;
+    $('#brandCompany').textContent = I18N.lang === 'en' && s.companyNameEn ? s.companyNameEn : s.companyName;
     $('#brandLogo').src = s.logo;
     $('#favicon').href = s.logo;
     $('#appVersion').textContent = `الإصدار ${APP_CONFIG.version}`;
-    $('#copyrightLine').textContent = `© ${new Date().getFullYear()} جميع الحقوق محفوظة لـ ${APP_CONFIG.copyrightHolder}`;
+    $('#copyrightLine').textContent = copyrightText();
+    $('#langBtn').innerHTML = langBtnLabel();
     const meta = document.querySelector('meta[name=theme-color]');
     if (meta) meta.content = s.theme.sidebar;
   }
@@ -245,8 +249,8 @@
   const statusBadge = (s) => `<span class="badge st-${s}"><i class="dot"></i>${STATUS[s]?.label || s}</span>`;
   // لون اللوحة حسب نوعها (من APP_CONFIG.plateColors): خصوصي أصفر • تجاري أحمر • مؤقت أسود
   const plateStyle = (type) => { const c = (APP_CONFIG.plateColors || {})[type] || { bg: '#ffffff', fg: '#111111' }; return `--pbg:${c.bg};--pfg:${c.fg}`; };
-  const plate = (v, size = '') => v ? `<span class="plate ${size}" style="${plateStyle(v.plateType)}" title="لوحة ${esc(v.plateType)}"><span class="p-no">${esc(v.plateNo)}</span>${v.plateCode ? `<span class="p-code">${esc(v.plateCode)}</span>` : ''}</span>` : '<span class="muted">—</span>';
-  const avatar = (u, extra = '') => `<span class="avatar r-${u ? u.role : ''} ${extra}" title="${esc(u ? u.name : '')}">${esc(initials(u ? u.name : '؟'))}</span>`;
+  const plate = (v, size = '') => v ? `<span class="plate ${size}" data-raw style="${plateStyle(v.plateType)}" title="لوحة ${esc(v.plateType)}"><span class="p-no">${esc(v.plateNo)}</span>${v.plateCode ? `<span class="p-code">${esc(v.plateCode)}</span>` : ''}</span>` : '<span class="muted">—</span>';
+  const avatar = (u, extra = '') => `<span class="avatar r-${u ? u.role : ''} ${extra}" data-raw title="${esc(u ? u.name : '')}">${esc(initials(u ? u.name : '؟'))}</span>`;
   const ibtn = (ic, action, id, title, cls = '') => `<button class="ibtn ${cls}" data-action="${action}" data-id="${esc(id)}" title="${esc(title)}" aria-label="${esc(title)}">${icon(ic)}</button>`;
   const empty = (msg, ic = 'search') => `<div class="empty">${icon(ic)}<div>${msg}</div></div>`;
   const field = (label, input, cls = '') => `<label class="field ${cls}"><span>${label}</span>${input}</label>`;
@@ -434,7 +438,7 @@
     setTimeout(() => { const f = $(ui.loginUser ? '#login-screen input[name=password]' : '#login-screen input[name=username]'); if (f) f.focus(); }, 30);
     el.innerHTML = `
       <section class="login-side">
-        <div class="brand-big"><img src="${esc(s.logo)}" alt="الشعار"><div><strong style="font-size:18px">${esc(s.companyName)}</strong><div style="color:rgba(255,255,255,.65);font-size:13px">${esc(s.companyNameEn)}</div></div></div>
+        <div class="brand-big"><img src="${esc(s.logo)}" alt="الشعار"><div><strong style="font-size:18px">${esc(I18N.lang === 'en' ? s.companyNameEn || s.companyName : s.companyName)}</strong>${I18N.lang === 'en' ? '' : `<div style="color:rgba(255,255,255,.65);font-size:13px">${esc(s.companyNameEn)}</div>`}</div></div>
         <div>
           <h1>${esc(s.systemName)}</h1>
           <p>لوحة تحكم مركزية لمتابعة حالة الشاحنات والمعدات، التراخيص والتأمين، الصيانة، عقود التشغيل والإيجار، والمهام اليومية.</p>
@@ -462,9 +466,19 @@
           <button type="submit" class="btn btn-primary btn-block" id="loginBtn">${icon('logout', 'flip')} دخول</button>
           <p class="muted login-help">نسيت كلمة المرور؟ تواصل مع مدير النظام لإعادة تعيينها.</p>
         </form>
-        <footer class="login-copy">© ${new Date().getFullYear()} جميع الحقوق محفوظة لـ ${esc(APP_CONFIG.copyrightHolder)}</footer>
+        <footer class="login-copy">${esc(copyrightText())}</footer>
+        <button type="button" class="lang-btn login-lang" data-action="lang-toggle">${langBtnLabel()}</button>
       </section>`;
   }
+
+  /* ---------- اللغة والحقوق ---------- */
+  function copyrightText() {
+    const y = new Date().getFullYear();
+    return I18N.lang === 'en'
+      ? `© ${y} All rights reserved — ${APP_CONFIG.copyrightHolderEn || APP_CONFIG.copyrightHolder}`
+      : `© ${y} جميع الحقوق محفوظة لـ ${APP_CONFIG.copyrightHolder}`;
+  }
+  const langBtnLabel = () => `${icon('globe')}<span>${I18N.lang === 'en' ? 'عربي' : 'English'}</span>`;
 
   /* ---------- تسجيل الدخول وكلمات المرور ---------- */
   const LOCK_KEY = APP_CONFIG.storageKey + '_lock';
@@ -588,7 +602,7 @@
           <button class="stat stat-${s}" data-action="goto-fleet" data-status="${s}">
             ${statusBadge(s)}
             <div class="stat-num">${c[s]}</div>
-            <div class="stat-foot">${Math.round((c[s] / total) * 100)}% من الأسطول • ${STATUS[s].en}</div>
+            <div class="stat-foot">${Math.round((c[s] / total) * 100)}% من الأسطول${I18N.lang === 'en' ? '' : ' • ' + STATUS[s].en}</div>
             <div class="stat-bar"><i style="width:${(c[s] / total) * 100}%"></i></div>
           </button>`).join('')}
       </section>
@@ -625,7 +639,7 @@
           <div class="card-head"><h3>${icon('check')} المهام المفتوحة</h3><button class="btn-link" data-action="goto" data-route="tasks">لوحة المهام</button></div>
           ${recentTasks.length ? `<ul class="list">${recentTasks.map((t) => `
             <li><span class="badge ${t.status === 'review' ? 'b-warn' : t.status === 'progress' ? 'b-info' : 'b-neutral'}">${TASK_STATUS[t.status]}</span>
-              <div class="grow"><div class="title">${esc(t.title)}</div><div class="meta">${esc(TASK_TYPES[t.type])} • ${esc(uName(t.assigneeId))}${t.dueDate ? ' • الاستحقاق ' + fmtDate(t.dueDate) : ''}</div></div>
+              <div class="grow"><div class="title" data-raw>${esc(t.title)}</div><div class="meta">${esc(TASK_TYPES[t.type])} • ${esc(uName(t.assigneeId))}${t.dueDate ? ' • الاستحقاق ' + fmtDate(t.dueDate) : ''}</div></div>
               ${ibtn('edit', 'task-edit', t.id, 'فتح المهمة')}</li>`).join('')}</ul>` : empty('لا توجد مهام مفتوحة', 'check')}
         </div>
         <div class="card">
@@ -819,10 +833,10 @@
             <dt>آخر صيانة</dt><dd>${fmtDate(v.lastService)}</dd>
           </dl><div class="progress ${m.state}" style="margin-top:10px"><i style="width:${m.pct}%"></i></div></div>
         </div>
-        ${v.notes ? `<div class="info-box" style="margin-top:14px"><h4>ملاحظات عامة</h4><p>${esc(v.notes)}</p></div>` : ''}
+        ${v.notes ? `<div class="info-box" style="margin-top:14px"><h4>ملاحظات عامة</h4><p data-raw>${esc(v.notes)}</p></div>` : ''}
         <div class="vp-grid" style="margin-top:14px">
-          <div class="info-box"><h4>${icon('check')} آخر المهام</h4>${tasks.length ? `<ul class="list">${tasks.map((t) => `<li><span class="badge ${t.status === 'done' ? 'b-ok' : 'b-neutral'}">${TASK_STATUS[t.status]}</span><div class="grow"><div class="title">${esc(t.title)}</div><div class="meta">${esc(uName(t.assigneeId))}</div></div></li>`).join('')}</ul>` : '<p class="muted">لا توجد مهام</p>'}</div>
-          <div class="info-box"><h4>${icon('camera')} ملاحظات الميدان</h4>${reports.length ? `<ul class="list">${reports.map((r) => `<li><span class="badge ${r.kind === 'breakdown' ? 'b-bad' : 'b-info'}">${r.kind === 'breakdown' ? 'عطل' : 'ملاحظة'}</span><div class="grow"><div class="title" style="font-weight:500">${esc(r.text)}</div><div class="meta">${esc(uName(r.by))} • ${fmtDateTime(r.at)}</div></div></li>`).join('')}</ul>` : '<p class="muted">لا توجد ملاحظات</p>'}</div>
+          <div class="info-box"><h4>${icon('check')} آخر المهام</h4>${tasks.length ? `<ul class="list">${tasks.map((t) => `<li><span class="badge ${t.status === 'done' ? 'b-ok' : 'b-neutral'}">${TASK_STATUS[t.status]}</span><div class="grow"><div class="title" data-raw>${esc(t.title)}</div><div class="meta">${esc(uName(t.assigneeId))}</div></div></li>`).join('')}</ul>` : '<p class="muted">لا توجد مهام</p>'}</div>
+          <div class="info-box"><h4>${icon('camera')} ملاحظات الميدان</h4>${reports.length ? `<ul class="list">${reports.map((r) => `<li><span class="badge ${r.kind === 'breakdown' ? 'b-bad' : 'b-info'}">${r.kind === 'breakdown' ? 'عطل' : 'ملاحظة'}</span><div class="grow"><div class="title" style="font-weight:500" data-raw>${esc(r.text)}</div><div class="meta">${esc(uName(r.by))} • ${fmtDateTime(r.at)}</div></div></li>`).join('')}</ul>` : '<p class="muted">لا توجد ملاحظات</p>'}</div>
         </div>`,
     });
   }
@@ -1033,7 +1047,7 @@
         </div>
         <div style="margin-top:12px">${list.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>أمر العمل</th><th>المعدة</th><th>النوع</th><th>الأولوية</th><th>المسؤول</th><th>الاستحقاق</th><th>الحالة</th><th></th></tr></thead><tbody>
           ${list.map((t) => { const v = vehById(t.vehicleId); const dd = daysUntil(t.dueDate); return `<tr>
-            <td><div class="cell-title">${esc(t.title)}</div>${t.source === 'field' ? '<div class="cell-sub">📷 من بلاغ ميداني</div>' : ''}</td>
+            <td><div class="cell-title" data-raw>${esc(t.title)}</div>${t.source === 'field' ? '<div class="cell-sub">📷 من بلاغ ميداني</div>' : ''}</td>
             <td>${v ? plate(v, 'sm') : '—'}<div class="cell-sub">${v ? statusBadge(v.status) : ''}</div></td>
             <td>${esc(MKIND[t.mkind] || 'صيانة')}</td>
             <td><span class="badge ${t.priority === 'high' ? 'b-bad' : t.priority === 'medium' ? 'b-warn' : 'b-neutral'}">${PRIORITY[t.priority]}</span></td>
@@ -1182,7 +1196,7 @@
       <div class="r-head">${avatar(userById(r.by))}<div style="flex:1;min-width:0"><b>${esc(uName(r.by))}</b><div class="cell-sub">${fmtDateTime(r.at)}${r.location ? ' • ' + esc(r.location) : ''}</div></div>
         ${r.kind === 'breakdown' ? `<span class="badge b-bad">${icon('alert')} بلاغ عطل – ${esc(SEVERITY[r.severity] || '')}</span>` : '<span class="badge b-info">ملاحظة</span>'}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${plate(v, 'sm')}<span class="cell-sub">${esc(v ? v.type + ' – ' + v.make : '')}</span>${v ? statusBadge(v.status) : ''}</div>
-      <div class="r-text">${esc(r.text)}</div>
+      <div class="r-text" data-raw>${esc(r.text)}</div>
       ${r.photos && r.photos.length ? `<div class="thumbs">${r.photos.map((p, i) => `<img src="${p}" alt="صورة ${i + 1}" data-action="photo-view" data-r="${r.id}" data-i="${i}">`).join('')}</div>` : ''}
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${t ? `<span class="cell-sub">مهمة الصيانة:</span> <span class="badge ${t.status === 'done' ? 'b-ok' : 'b-warn'}">${TASK_STATUS[t.status]}</span>${me.role !== 'driver' ? `<button class="btn-link" data-action="task-edit" data-id="${t.id}">فتح المهمة</button>` : ''}`
@@ -1243,7 +1257,7 @@
     const i = TASK_ORDER.indexOf(t.status);
     const assignee = userById(t.assigneeId);
     return `<div class="kcard p-${t.priority}">
-      <div class="k-title" data-action="task-edit" data-id="${t.id}">${esc(t.title)}</div>
+      <div class="k-title" data-action="task-edit" data-id="${t.id}"><span data-raw>${esc(t.title)}</span></div>
       <div class="k-meta">
         <span class="badge ${t.type === 'maintenance' ? 'b-warn' : t.type === 'operation' ? 'b-primary' : 'b-neutral'}">${TASK_TYPES[t.type]}</span>
         ${t.source === 'field' ? '<span class="badge b-bad">بلاغ ميداني</span>' : ''}
@@ -1281,7 +1295,7 @@
         ${field('الحالة', `<select name="status">${TASK_ORDER.map((s) => `<option value="${s}" ${s === t.status ? 'selected' : ''} ${s === 'done' && !can('task.approve') && t.status !== 'done' ? 'disabled' : ''}>${TASK_STATUS[s]}</option>`).join('')}</select>`)}
         ${t.type === 'maintenance' || !id ? field('نوع الصيانة', `<select name="mkind">${opts(optsMap(MKIND), t.mkind || 'corrective', '—')}</select><span class="hint">إتمام «صيانة دورية» يحدّث موعد الصيانة القادمة تلقائياً</span>`) : ''}
       </div>
-      ${report ? `<div class="info-box" style="margin-top:14px"><h4>${icon('camera')} البلاغ الميداني المرتبط</h4><p>${esc(report.text)}</p><div class="cell-sub" style="margin:6px 0">${esc(uName(report.by))} • ${fmtDateTime(report.at)}${report.location ? ' • ' + esc(report.location) : ''}</div>
+      ${report ? `<div class="info-box" style="margin-top:14px"><h4>${icon('camera')} البلاغ الميداني المرتبط</h4><p data-raw>${esc(report.text)}</p><div class="cell-sub" style="margin:6px 0">${esc(uName(report.by))} • ${fmtDateTime(report.at)}${report.location ? ' • ' + esc(report.location) : ''}</div>
         ${report.photos?.length ? `<div class="thumbs">${report.photos.map((p, i) => `<img src="${p}" alt="صورة" data-action="photo-view" data-r="${report.id}" data-i="${i}">`).join('')}</div>` : ''}</div>` : ''}
       ${id ? `<p class="cell-sub" style="margin-top:12px">أنشأها ${esc(uName(t.createdBy))} • ${fmtDateTime(t.createdAt)}${t.doneAt ? ' • أُغلقت ' + fmtDateTime(t.doneAt) : ''}</p>` : ''}`,
       onSubmit: (d) => {
@@ -1464,8 +1478,8 @@
       footer: `<button type="button" class="btn btn-ghost" data-action="print">${icon('printer')} طباعة</button>${i.status === 'draft' && can('invoice') ? `<button type="button" class="btn btn-ok" data-action="invoice-approve" data-id="${i.id}">${icon('check')} اعتماد الفاتورة</button>` : ''}`,
       body: `<div class="invoice">
         <div class="inv-head">
-          <div class="inv-brand"><img src="${esc(s.logo)}" alt=""><div><b style="font-size:16px">${esc(s.companyName)}</b><div class="cell-sub">${esc(s.companyNameEn)}</div></div></div>
-          <div style="text-align:left"><b style="font-size:18px;color:var(--primary)">فاتورة إيجار معدات</b><div class="num">${esc(i.no)}</div><span class="badge ${i.status === 'approved' ? 'b-ok' : 'b-warn'}">${i.status === 'approved' ? 'معتمدة' : 'مسودة'}</span></div>
+          <div class="inv-brand"><img src="${esc(s.logo)}" alt=""><div><b style="font-size:16px">${esc(I18N.lang === 'en' ? s.companyNameEn || s.companyName : s.companyName)}</b>${I18N.lang === 'en' ? '' : `<div class="cell-sub">${esc(s.companyNameEn)}</div>`}</div></div>
+          <div style="text-align:end"><b style="font-size:18px;color:var(--primary)">فاتورة إيجار معدات</b><div class="num">${esc(i.no)}</div><span class="badge ${i.status === 'approved' ? 'b-ok' : 'b-warn'}">${i.status === 'approved' ? 'معتمدة' : 'مسودة'}</span></div>
         </div>
         <div class="inv-meta">
           <div class="info-box"><dl class="kv"><dt>العميل</dt><dd>${esc(i.client)}</dd><dt>المشروع</dt><dd>${esc(pName(i.projectId))}</dd></dl></div>
@@ -1568,7 +1582,8 @@
         <div class="card">
           <div class="card-head"><h3>${icon('palette')} الهوية البصرية</h3></div>
           <div class="form-grid two">
-            ${field('اسم النظام', `<input name="systemName" value="${esc(s.systemName)}" required>`, 'full')}
+            ${field('اسم النظام', `<input name="systemName" value="${esc(s.systemNameAr)}" required>`)}
+            ${field('اسم النظام (إنجليزي)', `<input name="systemNameEn" value="${esc(s.systemNameEn)}" dir="ltr">`)}
             ${field('اسم الشركة (عربي)', `<input name="companyName" value="${esc(s.companyName)}" required>`)}
             ${field('اسم الشركة (إنجليزي)', `<input name="companyNameEn" value="${esc(s.companyNameEn)}" dir="ltr">`)}
             <div class="field full"><span>شعار الشركة</span>
@@ -1611,8 +1626,8 @@
       <div class="card section-gap">
         <div class="card-head"><h3>${icon('settings')} القيم الافتراضية في الكود</h3></div>
         <p class="cell-sub" style="margin-bottom:10px">التغييرات هنا تُحفظ في هذا المتصفح فقط. لتثبيتها لجميع المستخدمين عدّل الملف <b class="num">js/config.js</b> في المستودع:</p>
-        <div class="code-note">const APP_CONFIG = {
-  systemName: '${esc(s.systemName)}',
+        <div class="code-note" data-raw>const APP_CONFIG = {
+  systemName: '${esc(s.systemNameAr)}',
   companyName: '${esc(s.companyName)}',
   logo: 'assets/logo.svg',
   theme: { primary: '${esc(s.theme.primary)}', accent: '${esc(s.theme.accent)}', sidebar: '${esc(s.theme.sidebar)}' },
@@ -1630,7 +1645,7 @@
   function saveSettings(form) {
     const d = formData(form);
     db.settings = Object.assign({}, db.settings, {
-      systemName: d.systemName, companyName: d.companyName, companyNameEn: d.companyNameEn,
+      systemName: d.systemName, systemNameEn: d.systemNameEn, companyName: d.companyName, companyNameEn: d.companyNameEn,
       theme: { primary: d.primary, accent: d.accent, sidebar: d.sidebar },
       alertDays: Number(d.alertDays) || APP_CONFIG.alertDays,
       maintenanceThreshold: { hours: Number(d.thHours) || 0, km: Number(d.thKm) || 0 },
@@ -1646,6 +1661,7 @@
   const ACTIONS = {
     'logout': () => { if (me) { log(`تسجيل خروج ${me.name}`); Store.save(db); } me = null; ui.loginError = ''; ui.loginUser = ''; Store.clearSession(); closeModal(); render(); },
     'change-password': () => openChangePassword(false),
+    'lang-toggle': () => I18N.toggle(),
     'pw-toggle': (d, el) => {
       const inp = el.parentElement.querySelector('input');
       const show = inp.type === 'password';
@@ -1942,6 +1958,7 @@
      25) التشغيل
      ======================================================================= */
   (function init() {
+    I18N.apply();
     const sid = Store.getSession();
     const u = sid ? userById(sid) : null;
     me = u && u.active !== false ? u : null;
