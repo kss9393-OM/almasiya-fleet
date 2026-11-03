@@ -28,9 +28,14 @@ async function login(ctx, username) {
   await page.waitForSelector('#app:not(.hidden)', { timeout: 30000 });
   return page;
 }
+// حالة المعدة كما تظهر على الشاشة: قائمة الحالة (لمن يملك صلاحية التغيير) أو شارة الحالة (للمشرف)
 const vehStatus = (page, id) => page.evaluate((vid) => {
   const sel = document.querySelector(`select[data-change=vehicle-status][data-id=${vid}]`);
-  return sel ? sel.value : null;
+  if (sel) return sel.value;
+  const row = document.querySelector(`[data-action=view-vehicle][data-id=${vid}]`)?.closest('tr');
+  const badge = row && row.querySelector('.badge[class*="st-"]');
+  const m = badge && badge.className.match(/st-(active|idle|maintenance|breakdown)/);
+  return m ? m[1] : null;
 }, id);
 
 try {
