@@ -67,5 +67,5 @@ const APP_CONFIG = {
 
   // ---------- التخزين ----------
   storageKey: 'almasiya_fleet_v1',
-  version: '1.0.0',
+  version: '1.1.0',
 };
