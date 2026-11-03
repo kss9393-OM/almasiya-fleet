@@ -1,4 +1,5 @@
 /* =========================================================================
+   © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م
    نظام إدارة الأسطول — التنسيقات
    الألوان الأساسية تُضبط من js/config.js عبر متغيرات CSS
    ========================================================================= */
@@ -517,6 +518,27 @@ input[type=color] { width: 46px; height: 38px; padding: 2px; border: 1px solid v
 .user-btn b { display: block; font-size: 13.5px; }
 .user-btn small { color: var(--muted); font-size: 12px; }
 .demo-note { margin-top: 24px; font-size: 12.5px; color: var(--muted); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 10px 14px; }
+
+/* Login card */
+.login-main { align-items: center; }
+.login-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 32px 30px; display: flex; flex-direction: column; gap: 16px; }
+.login-card h2 { margin: 0; }
+.login-card > p.muted { margin-top: -10px; }
+.login-help { font-size: 12.5px; text-align: center; }
+.login-copy { margin-top: 28px; font-size: 12.5px; color: var(--muted); text-align: center; }
+.login-error { display: flex; align-items: flex-start; gap: 8px; background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; }
+.login-error .ic { margin-top: 2px; }
+.notice { display: flex; gap: 10px; align-items: flex-start; background: var(--info-bg); color: var(--info); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; margin-bottom: 14px; }
+.notice .ic { margin-top: 2px; }
+.input-ic { position: relative; }
+.input-ic > .ic { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.input-ic input { padding-right: 36px !important; padding-left: 12px !important; }
+.input-ic:has(.pw-toggle) input { padding-left: 42px !important; }
+.input-ic input[dir=ltr] { text-align: left; }
+.pw-toggle { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; background: transparent; color: var(--muted); border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.pw-toggle:hover { background: var(--primary-soft); color: var(--primary); }
+.btn-block { width: 100%; padding: 11px 16px; }
+.ic.flip { transform: scaleX(-1); }
 
 /* ------------------------------------------------------------------ */
 /* Modal & toast                                                       */

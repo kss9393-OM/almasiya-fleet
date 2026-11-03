@@ -1,4 +1,5 @@
 /* =========================================================================
+   © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م
    نظام إدارة الأسطول والمعدات — منطق الواجهة (Vanilla JavaScript)
    الأقسام: أدوات مساعدة • الصلاحيات • التوجيه • الأقسام (Views) • الإجراءات
    ========================================================================= */
@@ -91,6 +92,9 @@
     database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>',
     palette: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 2-.8 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A5.6 5.6 0 0 0 22 10c0-4.4-4.5-8-10-8z"/>',
     activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
+    eyeOff: '<path d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M1 1l22 22"/>',
   };
   const icon = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n] || ''}</svg>`;
 
@@ -151,6 +155,7 @@
     $('#brandLogo').src = s.logo;
     $('#favicon').href = s.logo;
     $('#appVersion').textContent = `الإصدار ${APP_CONFIG.version}`;
+    $('#copyrightLine').textContent = `© ${new Date().getFullYear()} جميع الحقوق محفوظة لـ ${APP_CONFIG.copyrightHolder}`;
     const meta = document.querySelector('meta[name=theme-color]');
     if (meta) meta.content = s.theme.sidebar;
   }
@@ -285,22 +290,24 @@
      9) النوافذ المنبثقة (Modals)
      ======================================================================= */
   let modalCb = null;
-  function openModal({ title, body, submit = 'حفظ', onSubmit = null, size = '', footer = '', danger = false, printable = false }) {
+  let modalLocked = false; // نافذة إلزامية لا تُغلق إلا بإتمام الإجراء (مثل تغيير كلمة المرور الأولية)
+  function openModal({ title, body, submit = 'حفظ', onSubmit = null, size = '', footer = '', danger = false, printable = false, locked = false }) {
     $('#modal-root').innerHTML = `
       <div class="modal-backdrop" data-action="modal-bg">
         <div class="modal ${size}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
           <form id="modalForm">
-            <header class="modal-head"><h3>${title}</h3><button type="button" class="icon-btn" data-action="close-modal" aria-label="إغلاق">${icon('x')}</button></header>
+            <header class="modal-head"><h3>${title}</h3>${locked ? '' : `<button type="button" class="icon-btn" data-action="close-modal" aria-label="إغلاق">${icon('x')}</button>`}</header>
             <div class="modal-body ${printable ? 'print-area' : ''}">${body}</div>
             <footer class="modal-foot">
               ${onSubmit ? `<button type="submit" class="btn ${danger ? 'btn-danger' : 'btn-primary'}">${submit}</button>` : ''}
-              <button type="button" class="btn btn-ghost" data-action="close-modal">${onSubmit ? 'إلغاء' : 'إغلاق'}</button>
+              ${locked ? '' : `<button type="button" class="btn btn-ghost" data-action="close-modal">${onSubmit ? 'إلغاء' : 'إغلاق'}</button>`}
               ${footer ? `<span class="spacer"></span>${footer}` : ''}
             </footer>
           </form>
         </div>
       </div>`;
     modalCb = onSubmit;
+    modalLocked = locked;
     document.body.classList.add('modal-open');
     const first = $('#modal-root .modal-body input:not([type=hidden]):not([type=file]), #modal-root .modal-body select, #modal-root .modal-body textarea');
     if (first && onSubmit) setTimeout(() => first.focus(), 30);
@@ -308,6 +315,7 @@
   function closeModal() {
     $('#modal-root').innerHTML = '';
     modalCb = null;
+    modalLocked = false;
     document.body.classList.remove('modal-open');
   }
   function confirmBox(msg, onYes, yes = 'تأكيد', danger = true) {
@@ -393,6 +401,7 @@
     $('#alertsBtn').innerHTML = icon('bell') + (alertsN ? `<span class="pill">${alertsN}</span>` : '');
     $('#userChip').innerHTML = `<div class="who"><b>${esc(me.name)}</b><small>${ROLES[me.role]}</small></div>${avatar(me)}`;
     $('#logoutBtn').innerHTML = icon('logout');
+    $('#pwBtn').innerHTML = icon('key');
     $('.menu-btn').innerHTML = icon('menu');
   }
 
@@ -421,6 +430,7 @@
     $('#app').classList.add('hidden');
     const el = $('#login-screen');
     el.classList.remove('hidden');
+    setTimeout(() => { const f = $(ui.loginUser ? '#login-screen input[name=password]' : '#login-screen input[name=username]'); if (f) f.focus(); }, 30);
     el.innerHTML = `
       <section class="login-side">
         <div class="brand-big"><img src="${esc(s.logo)}" alt="الشعار"><div><strong style="font-size:18px">${esc(s.companyName)}</strong><div style="color:rgba(255,255,255,.65);font-size:13px">${esc(s.companyNameEn)}</div></div></div>
@@ -434,19 +444,113 @@
             <li><i class="dot" style="background:var(--st-breakdown)"></i>خارج الخدمة / معطلة</li>
           </ul>
         </div>
-        <small style="color:rgba(255,255,255,.5);position:relative;z-index:1">© ${new Date().getFullYear()} ${esc(s.companyName)}</small>
+        <small style="color:rgba(255,255,255,.5);position:relative;z-index:1">${esc(s.companyName)}</small>
       </section>
       <section class="login-main">
-        <h2>تسجيل الدخول</h2>
-        <p class="muted">اختر حساباً للدخول. كل دور يرى واجهة وصلاحيات مختلفة.</p>
-        ${ROLE_ORDER.map((role) => {
-          const list = db.users.filter((u) => u.role === role && u.active !== false);
-          if (!list.length) return '';
-          return `<div class="role-group"><h4>${avatar({ role, name: ROLES[role] })} ${ROLES[role]}</h4><div class="user-btns">${list.map((u) => `
-            <button class="user-btn" data-action="login" data-id="${u.id}">${avatar(u)}<span><b>${esc(u.name)}</b><small>${ROLES[u.role]}</small></span></button>`).join('')}</div></div>`;
-        }).join('')}
-        <div class="demo-note">${icon('database')} نسخة تجريبية: البيانات محفوظة في متصفحك (LocalStorage). عند ربط النظام بخادم لاحقاً تُستبدل هذه الشاشة بتسجيل دخول حقيقي بكلمة مرور.</div>
+        <form class="login-card" data-form="login" autocomplete="on" novalidate>
+          <h2>تسجيل الدخول</h2>
+          <p class="muted">أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التحكم.</p>
+          <div class="login-error ${ui.loginError ? '' : 'hidden'}" id="loginError" role="alert">${icon('alert')}<span>${esc(ui.loginError || '')}</span></div>
+          <label class="field"><span>اسم المستخدم</span>
+            <div class="input-ic">${icon('users')}<input name="username" autocomplete="username" required dir="ltr" value="${esc(ui.loginUser || '')}" placeholder="username"></div>
+          </label>
+          <label class="field"><span>كلمة المرور</span>
+            <div class="input-ic">${icon('lock')}<input name="password" type="password" autocomplete="current-password" required dir="ltr" placeholder="••••••••">
+              <button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="إظهار كلمة المرور" title="إظهار / إخفاء">${icon('eye')}</button></div>
+          </label>
+          <button type="submit" class="btn btn-primary btn-block" id="loginBtn">${icon('logout', 'flip')} دخول</button>
+          <p class="muted login-help">نسيت كلمة المرور؟ تواصل مع مدير النظام لإعادة تعيينها.</p>
+        </form>
+        <footer class="login-copy">© ${new Date().getFullYear()} جميع الحقوق محفوظة لـ ${esc(APP_CONFIG.copyrightHolder)}</footer>
       </section>`;
+  }
+
+  /* ---------- تسجيل الدخول وكلمات المرور ---------- */
+  const LOCK_KEY = APP_CONFIG.storageKey + '_lock';
+  function getLocks() { try { return JSON.parse(localStorage.getItem(LOCK_KEY) || '{}'); } catch (e) { return {}; } }
+  function setLocks(l) { try { localStorage.setItem(LOCK_KEY, JSON.stringify(l)); } catch (e) { /* ignore */ } }
+
+  function loginFail(msg, username) {
+    ui.loginError = msg;
+    ui.loginUser = username;
+    const box = $('#loginError');
+    if (box) { box.classList.remove('hidden'); box.querySelector('span').textContent = msg; }
+    const pw = $('#login-screen input[name=password]');
+    if (pw) { pw.value = ''; pw.focus(); }
+  }
+
+  function doLogin(form) {
+    const d = formData(form);
+    const uname = (d.username || '').toLowerCase();
+    if (!uname || !d.password) { loginFail('أدخل اسم المستخدم وكلمة المرور', d.username); return; }
+    const locks = getLocks();
+    const lk = locks[uname] || { count: 0, until: 0 };
+    if (lk.until > Date.now()) {
+      loginFail(`تم إيقاف المحاولات مؤقتاً بسبب تكرار الأخطاء. حاول بعد ${Math.ceil((lk.until - Date.now()) / 1000)} ثانية.`, d.username);
+      return;
+    }
+    const u = db.users.find((x) => (x.username || '').toLowerCase() === uname);
+    if (!u || !Store.verifyPassword(u, d.password)) {
+      lk.count = (lk.count || 0) + 1;
+      if (lk.count >= APP_CONFIG.maxLoginAttempts) { lk.until = Date.now() + APP_CONFIG.lockoutSeconds * 1000; lk.count = 0; }
+      locks[uname] = lk;
+      setLocks(locks);
+      const left = APP_CONFIG.maxLoginAttempts - lk.count;
+      loginFail(lk.until > Date.now()
+        ? `تم إيقاف المحاولات لمدة ${APP_CONFIG.lockoutSeconds} ثانية بسبب تكرار الأخطاء.`
+        : `اسم المستخدم أو كلمة المرور غير صحيحة${left <= 2 ? ` (متبقي ${left} ${left === 1 ? 'محاولة' : 'محاولات'})` : ''}`, d.username);
+      return;
+    }
+    if (u.active === false) { loginFail('هذا الحساب موقوف. تواصل مع مدير النظام.', d.username); return; }
+    delete locks[uname];
+    setLocks(locks);
+    me = u;
+    ui.loginError = '';
+    ui.loginUser = '';
+    u.lastLogin = new Date().toISOString();
+    Store.setSession(u.id);
+    ui.route = '';
+    history.replaceState(null, '', location.pathname + location.search);
+    log(`تسجيل دخول ${u.name}`);
+    Store.save(db);
+    render();
+    if (u.mustChange) openChangePassword(true);
+    else toast(`مرحباً ${u.name}`, 'info');
+  }
+
+  function passwordProblem(pw) {
+    const min = APP_CONFIG.minPasswordLength;
+    if (!pw || pw.length < min) return `كلمة المرور يجب ألا تقل عن ${min} أحرف`;
+    if (!/[A-Za-z؀-ۿ]/.test(pw) || !/\d/.test(pw)) return 'كلمة المرور يجب أن تحتوي على حروف وأرقام';
+    return '';
+  }
+  const pwInput = (name, label, auto = 'new-password', extra = '') => field(label,
+    `<div class="input-ic">${icon('lock')}<input name="${name}" type="password" autocomplete="${auto}" dir="ltr" ${extra}><button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="إظهار">${icon('eye')}</button></div>`);
+
+  function openChangePassword(forced) {
+    openModal({
+      title: forced ? 'تغيير كلمة المرور الأولية' : 'تغيير كلمة المرور',
+      submit: 'حفظ كلمة المرور',
+      locked: forced,
+      footer: forced ? `<button type="button" class="btn btn-ghost" data-action="logout">${icon('logout')} خروج</button>` : '',
+      body: `${forced ? `<div class="notice">${icon('shield')}<span>لحماية حسابك، يجب تعيين كلمة مرور جديدة خاصة بك قبل المتابعة.</span></div>` : ''}
+        <div class="form-grid" style="grid-template-columns:1fr">
+          ${pwInput('current', 'كلمة المرور الحالية', 'current-password', 'required')}
+          ${pwInput('next', 'كلمة المرور الجديدة', 'new-password', 'required')}
+          ${pwInput('confirm', 'تأكيد كلمة المرور الجديدة', 'new-password', 'required')}
+          <p class="cell-sub">${APP_CONFIG.minPasswordLength} أحرف على الأقل، وتحتوي على حروف وأرقام.</p>
+        </div>`,
+      onSubmit: (d) => {
+        if (!Store.verifyPassword(me, d.current)) { toast('كلمة المرور الحالية غير صحيحة', 'error'); return false; }
+        const p = passwordProblem(d.next);
+        if (p) { toast(p, 'error'); return false; }
+        if (d.next !== d.confirm) { toast('كلمتا المرور غير متطابقتين', 'error'); return false; }
+        if (d.next === d.current) { toast('اختر كلمة مرور مختلفة عن الحالية', 'error'); return false; }
+        Store.setPassword(me, d.next, false);
+        commit(`تغيير كلمة المرور – ${me.name}`);
+        toast('تم تغيير كلمة المرور بنجاح');
+      },
+    });
   }
 
   /* =======================================================================
@@ -1386,7 +1490,7 @@
     return `
       <section class="kpi-row">${counts.map(([r, n]) => `<div class="kpi"><div class="k-label">${avatar({ role: r, name: ROLES[r] })} ${ROLES[r]}</div><div class="k-val">${n}</div></div>`).join('')}</section>
       <div class="toolbar"><span class="spacer"></span><button class="btn btn-primary" data-action="user-new">${icon('plus')} مستخدم جديد</button></div>
-      <div class="card p0"><div class="table-wrap"><table class="table"><thead><tr><th>الاسم</th><th>الدور</th><th>اسم المستخدم</th><th>الهاتف</th><th>الإسناد الحالي</th><th>الحالة</th><th></th></tr></thead><tbody>
+      <div class="card p0"><div class="table-wrap"><table class="table"><thead><tr><th>الاسم</th><th>الدور</th><th>اسم المستخدم</th><th>الهاتف</th><th>الإسناد الحالي</th><th>آخر دخول</th><th>الحالة</th><th></th></tr></thead><tbody>
         ${list.map((u) => {
           let assigned = '—';
           if (u.role === 'driver') { const v = db.vehicles.find((x) => x.assignment && x.assignment.driverId === u.id); assigned = v ? plate(v, 'sm') : '<span class="muted">بدون معدة</span>'; }
@@ -1396,6 +1500,7 @@
           return `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(u)}<b>${esc(u.name)}</b>${u.id === me.id ? '<span class="badge b-info">أنت</span>' : ''}</div></td>
             <td><span class="badge ${u.role === 'developer' ? 'b-dev' : u.role === 'manager' ? 'b-primary' : 'b-neutral'}">${ROLES[u.role]}</span></td>
             <td class="num">${esc(u.username || '—')}</td><td class="num">${esc(u.phone || '—')}</td><td>${assigned}</td>
+            <td class="cell-sub">${u.lastLogin ? fmtDateTime(u.lastLogin) : 'لم يدخل بعد'}${u.mustChange ? '<div><span class="badge b-warn">كلمة مرور مؤقتة</span></div>' : ''}</td>
             <td><span class="badge ${u.active !== false ? 'b-ok' : 'b-bad'}">${u.active !== false ? 'نشط' : 'موقوف'}</span></td>
             <td><div class="actions">${editable ? ibtn('edit', 'user-edit', u.id, 'تعديل') + (u.id !== me.id ? ibtn('trash', 'user-delete', u.id, 'حذف', 'danger') : '') : ''}</div></td></tr>`;
         }).join('')}
@@ -1413,15 +1518,29 @@
         ${field('اسم المستخدم *', `<input name="username" required value="${esc(u.username || '')}" dir="ltr" style="text-align:right">`)}
         ${field('رقم الهاتف', `<input name="phone" value="${esc(u.phone || '')}" dir="ltr" style="text-align:right" placeholder="+968">`)}
         ${field('الحالة', `<select name="active" ${id === me.id ? 'disabled' : ''}>${opts([{ value: '1', label: 'نشط' }, { value: '0', label: 'موقوف' }], u.active !== false ? '1' : '0')}</select>`)}
+        <h4 class="form-sec">${id ? 'إعادة تعيين كلمة المرور (اختياري)' : 'كلمة المرور'}</h4>
+        ${id === me.id ? '<p class="cell-sub field full">لتغيير كلمة مرورك استخدم زر «تغيير كلمة المرور» في الشريط العلوي.</p>' : `
+        ${pwInput('password', id ? 'كلمة مرور جديدة' : 'كلمة المرور المؤقتة *', 'new-password', id ? 'placeholder="اتركها فارغة دون تغيير"' : 'required')}
+        <label class="check field" style="align-self:end;padding-bottom:10px"><input type="checkbox" name="mustChange" value="1" checked> إلزامه بتغييرها عند الدخول</label>`}
       </div>`,
       onSubmit: (d) => {
         const dup = db.users.find((x) => x.id !== id && (x.username || '').toLowerCase() === d.username.toLowerCase());
         if (dup) { toast('اسم المستخدم مستخدم مسبقاً', 'error'); return false; }
+        if (!/^[A-Za-z0-9._-]{3,30}$/.test(d.username)) { toast('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات', 'error'); return false; }
+        if (d.password) { const p = passwordProblem(d.password); if (p) { toast(p, 'error'); return false; } }
         const data = { name: d.name, username: d.username, phone: d.phone };
         if (id !== me.id) { data.role = d.role; data.active = d.active !== '0'; }
-        if (id) { Object.assign(u, data); commit(`تعديل بيانات المستخدم ${u.name}`); }
-        else { db.users.push(Object.assign({ id: uid('u') }, data)); commit(`إضافة ${ROLES[data.role]}: ${data.name}`); }
-        toast('تم حفظ المستخدم');
+        if (id) {
+          Object.assign(u, data);
+          if (d.password && id !== me.id) Store.setPassword(u, d.password, !!d.mustChange);
+          commit(d.password ? `تعديل بيانات المستخدم ${u.name} وإعادة تعيين كلمة المرور` : `تعديل بيانات المستخدم ${u.name}`);
+        } else {
+          const nu = Object.assign({ id: uid('u') }, data);
+          Store.setPassword(nu, d.password, !!d.mustChange);
+          db.users.push(nu);
+          commit(`إضافة ${ROLES[data.role]}: ${data.name}`);
+        }
+        toast(d.password ? 'تم حفظ المستخدم وكلمة المرور' : 'تم حفظ المستخدم');
       },
     });
   }
@@ -1523,13 +1642,19 @@
      24) معالجات الأحداث
      ======================================================================= */
   const ACTIONS = {
-    'login': (d) => { const u = userById(d.id); if (!u) return; me = u; Store.setSession(u.id); ui.route = ''; location.hash = ''; render(); toast(`مرحباً ${u.name}`, 'info'); },
-    'logout': () => { me = null; Store.clearSession(); closeModal(); render(); },
+    'logout': () => { if (me) { log(`تسجيل خروج ${me.name}`); Store.save(db); } me = null; ui.loginError = ''; ui.loginUser = ''; Store.clearSession(); closeModal(); render(); },
+    'change-password': () => openChangePassword(false),
+    'pw-toggle': (d, el) => {
+      const inp = el.parentElement.querySelector('input');
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      el.innerHTML = icon(show ? 'eyeOff' : 'eye');
+    },
     'nav': () => closeSidebar(),
     'open-sidebar': openSidebar,
     'close-sidebar': closeSidebar,
     'close-modal': closeModal,
-    'modal-bg': (d, el, e) => { if (e.target === el) closeModal(); },
+    'modal-bg': (d, el, e) => { if (e.target === el && !modalLocked) closeModal(); },
     'goto': (d) => go(d.route),
     'goto-fleet': (d) => { ui.fleet.status = d.status || ''; go('fleet'); },
     'goto-field': (d) => { ui.fieldKind = d.kind; go('field'); },
@@ -1684,7 +1809,8 @@
       me = userById(keepId) || db.users[0];
       Store.setSession(me.id);
       render();
-      toast('تمت إعادة البيانات التجريبية', 'info');
+      toast('تمت إعادة البيانات التجريبية – كلمات المرور عادت إلى القيمة الأولية', 'info');
+      if (me.mustChange) openChangePassword(true);
     }, 'إعادة التعيين'),
   };
 
@@ -1801,10 +1927,11 @@
     }
     if (f.dataset.form === 'field') { e.preventDefault(); submitField(f); }
     if (f.dataset.form === 'settings') { e.preventDefault(); saveSettings(f); }
+    if (f.dataset.form === 'login') { e.preventDefault(); doLogin(f); }
     if (f.dataset.form === 'invoice') { e.preventDefault(); const d = formData(f); if (d.projectId) generateInvoice(d.projectId); }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if ($('#modal-root').innerHTML) closeModal(); else closeSidebar(); }
+    if (e.key === 'Escape') { if ($('#modal-root').innerHTML) { if (!modalLocked) closeModal(); } else closeSidebar(); }
   });
   window.addEventListener('hashchange', render);
   window.addEventListener('storage', (e) => { if (e.key === APP_CONFIG.storageKey) { db = Store.load(); if (me) me = userById(me.id) || null; render(); } });
@@ -1817,5 +1944,6 @@
     const u = sid ? userById(sid) : null;
     me = u && u.active !== false ? u : null;
     render();
+    if (me && me.mustChange) openChangePassword(true);
   })();
 })();
