@@ -3,18 +3,26 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="description" content="لوحة تحكم إدارة الشاحنات والمعدات – الماسية الدولية للمعدات ش.م.م">
   <meta name="author" content="مربع الخدمات ش.م.م – Services Square LLC">
   <meta name="copyright" content="© مربع الخدمات ش.م.م – جميع الحقوق محفوظة">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0b1f33">
+  <meta name="color-scheme" content="light">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="أسطول الماسية">
+  <meta name="format-detection" content="telephone=no">
   <title>نظام إدارة الأسطول والمعدات</title>
   <link rel="icon" id="favicon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
 
@@ -32,6 +40,7 @@
         </div>
       </div>
       <nav class="nav" id="nav"></nav>
+      <div class="sidebar-account" id="sidebarAccount"></div>
       <div class="sidebar-foot">
         <span id="appVersion"></span>
         <span id="copyrightLine"></span>
@@ -57,6 +66,7 @@
       </header>
       <main class="view" id="view"></main>
     </div>
+    <nav class="bottom-nav" id="bottomNav" aria-label="التنقل السريع"></nav>
   </div>
 
   <div id="modal-root"></div>

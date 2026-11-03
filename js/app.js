@@ -358,14 +358,14 @@
      ======================================================================= */
   const ALL = ['developer', 'manager', 'supervisor', 'driver', 'maintenance'];
   const PAGES = {
-    dashboard: { title: 'لوحة التحكم', sub: 'نظرة شاملة على حالة الأسطول والتنبيهات', icon: 'grid', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewDashboard },
-    mywork: { title: 'مركبتي ومهامي', sub: 'المعدة المسندة إليك، تسجيل الساعات والإبلاغ عن الأعطال', icon: 'truck', roles: ['driver'], view: viewMyWork },
-    fleet: { title: 'الأسطول والمعدات', sub: 'بطاقات تعريف المركبات والمعدات وحالتها', icon: 'truck', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewFleet },
+    dashboard: { short: 'الرئيسية', title: 'لوحة التحكم', sub: 'نظرة شاملة على حالة الأسطول والتنبيهات', icon: 'grid', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewDashboard },
+    mywork: { short: 'مركبتي', title: 'مركبتي ومهامي', sub: 'المعدة المسندة إليك، تسجيل الساعات والإبلاغ عن الأعطال', icon: 'truck', roles: ['driver'], view: viewMyWork },
+    fleet: { short: 'الأسطول', title: 'الأسطول والمعدات', sub: 'بطاقات تعريف المركبات والمعدات وحالتها', icon: 'truck', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewFleet },
     operations: { title: 'التشغيل والإيجار', sub: 'ربط المعدات بالمشاريع الداخلية أو عقود الإيجار (ساعي، يومي، شهري)', icon: 'briefcase', roles: ['developer', 'manager'], view: viewOperations },
-    timesheets: { title: 'ساعات التشغيل', sub: 'تسجيل واعتماد ساعات التشغيل اليومية (Timesheets)', icon: 'clock', roles: ['developer', 'manager', 'supervisor', 'driver'], view: viewTimesheets },
-    maintenance: { title: 'الصيانة وأوامر العمل', sub: 'أوامر العمل وجدول الصيانة الدورية حسب الساعات والكيلومترات', icon: 'wrench', roles: ['developer', 'manager', 'maintenance'], view: viewMaintenance },
-    field: { title: 'ملاحظات الميدان', sub: 'ملاحظات وصور الأعطال المرفوعة من السائقين والمشغلين', icon: 'camera', roles: ALL, view: viewField },
-    tasks: { title: 'متابعة المهام', sub: 'جديدة • قيد التنفيذ • بانتظار الاعتماد • مكتملة', icon: 'check', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewTasks },
+    timesheets: { short: 'الساعات', title: 'ساعات التشغيل', sub: 'تسجيل واعتماد ساعات التشغيل اليومية (Timesheets)', icon: 'clock', roles: ['developer', 'manager', 'supervisor', 'driver'], view: viewTimesheets },
+    maintenance: { short: 'الصيانة', title: 'الصيانة وأوامر العمل', sub: 'أوامر العمل وجدول الصيانة الدورية حسب الساعات والكيلومترات', icon: 'wrench', roles: ['developer', 'manager', 'maintenance'], view: viewMaintenance },
+    field: { short: 'الميدان', title: 'ملاحظات الميدان', sub: 'ملاحظات وصور الأعطال المرفوعة من السائقين والمشغلين', icon: 'camera', roles: ALL, view: viewField },
+    tasks: { short: 'المهام', title: 'متابعة المهام', sub: 'جديدة • قيد التنفيذ • بانتظار الاعتماد • مكتملة', icon: 'check', roles: ['developer', 'manager', 'supervisor', 'maintenance'], view: viewTasks },
     projects: { title: 'المشاريع والمشرفون', sub: 'إدارة المشاريع وتوزيعها على المشرفين', icon: 'folder', roles: ['developer', 'manager'], view: viewProjects },
     invoices: { title: 'الفواتير وتقارير التشغيل', sub: 'تقارير التشغيل الشهرية وإصدار واعتماد فواتير الإيجار', icon: 'file', roles: ['developer', 'manager'], view: viewInvoices },
     users: { title: 'المستخدمون والصلاحيات', sub: 'إضافة المستخدمين وتحديد أدوارهم', icon: 'users', roles: ['developer', 'manager'], view: viewUsers },
@@ -408,11 +408,39 @@
     $('#logoutBtn').innerHTML = icon('logout');
     $('#pwBtn').innerHTML = icon('key');
     $('.menu-btn').innerHTML = icon('menu');
+
+    // شريط التنقل السفلي (للجوال) — أهم الأقسام لكل دور + «المزيد» لفتح القائمة الكاملة
+    const allowed = Object.keys(PAGES).filter((k) => PAGES[k].roles.includes(me.role));
+    const primary = (BOTTOM_NAV[me.role] || allowed).filter((k) => allowed.includes(k)).slice(0, 4);
+    const more = true; // «المزيد» يفتح القائمة الكاملة وبطاقة الحساب (اللغة، كلمة المرور، الخروج)
+    $('#bottomNav').innerHTML = primary.map((k) => {
+      const n = navBadge(k);
+      return `<a href="#/${k}" class="${k === route ? 'on' : ''}" data-action="nav">${icon(PAGES[k].icon)}<span>${PAGES[k].short || PAGES[k].title}</span>${n ? `<i class="nb">${n}</i>` : ''}</a>`;
+    }).join('') + (more ? `<button type="button" class="${primary.includes(route) ? '' : 'on'}" data-action="open-sidebar">${icon('menu')}<span>المزيد</span></button>` : '');
+
+    // بطاقة الحساب داخل القائمة الجانبية (تظهر في الجوال)
+    $('#sidebarAccount').innerHTML = `
+      <div class="acc-user">${avatar(me)}<div><b>${esc(me.name)}</b><small>${ROLES[me.role]}</small></div></div>
+      <div class="acc-actions">
+        <button type="button" data-action="lang-toggle">${icon('globe')}<span>${I18N.lang === 'en' ? 'عربي' : 'English'}</span></button>
+        <button type="button" data-action="change-password">${icon('key')}<span>كلمة المرور</span></button>
+        <button type="button" data-action="logout" class="danger">${icon('logout')}<span>خروج</span></button>
+      </div>`;
   }
+
+  /* شريط التنقل السفلي في الجوال: الأقسام الأكثر استخداماً لكل دور */
+  const BOTTOM_NAV = {
+    developer: ['dashboard', 'fleet', 'tasks', 'timesheets'],
+    manager: ['dashboard', 'fleet', 'tasks', 'timesheets'],
+    supervisor: ['dashboard', 'timesheets', 'tasks', 'field'],
+    driver: ['mywork', 'timesheets', 'field'],
+    maintenance: ['dashboard', 'maintenance', 'tasks', 'field'],
+  };
 
   function render() {
     applyBranding();
-    if (!me) { showLogin(); return; }
+    if (!me) { setBars('DARK'); showLogin(); return; }
+    setBars('LIGHT');
     $('#login-screen').classList.add('hidden');
     $('#app').classList.remove('hidden');
     const allowed = Object.keys(PAGES).filter((k) => PAGES[k].roles.includes(me.role));
@@ -470,6 +498,53 @@
         <button type="button" class="lang-btn login-lang" data-action="lang-toggle">${langBtnLabel()}</button>
       </section>`;
   }
+
+  /* ---------- منصة أندرويد (Capacitor) ---------- */
+  const NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  const NP = NATIVE ? (window.Capacitor.Plugins || {}) : {};
+  if (NATIVE) document.documentElement.classList.add('native');
+  let barStyle = '';
+  function setBars(style) {
+    if (!NATIVE || !NP.SystemBars || barStyle === style) return;
+    barStyle = style;
+    NP.SystemBars.setStyle({ style }).catch(() => {});
+  }
+
+  /** حفظ ملف: في التطبيق يُشارك عبر قائمة المشاركة في أندرويد، وفي المتصفح يُنزَّل مباشرة */
+  async function saveFile(name, text, mime) {
+    if (NATIVE && NP.Filesystem && NP.Share) {
+      try {
+        const r = await NP.Filesystem.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+        await NP.Share.share({ title: name, url: r.uri, dialogTitle: name });
+        return true;
+      } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('تعذّر حفظ الملف', 'error'); return false; }
+    }
+    const blob = new Blob([text], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    return true;
+  }
+
+  /** يضيف عنوان كل عمود لخلاياه (data-label) لتُعرض الجداول كبطاقات على شاشة الجوال */
+  function labelTables(root) {
+    if (!root || root.nodeType !== 1) return;
+    const tables = root.matches && root.matches('table.table') ? [root] : root.querySelectorAll('table.table');
+    tables.forEach((t) => {
+      const heads = Array.from(t.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+      t.querySelectorAll('tbody tr, tfoot tr').forEach((tr) => {
+        let i = 0;
+        Array.from(tr.children).forEach((td) => {
+          const span = Number(td.getAttribute('colspan') || 1);
+          if (!td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i] || '');
+          i += span;
+        });
+      });
+    });
+  }
+  new MutationObserver((recs) => recs.forEach((r) => r.addedNodes.forEach(labelTables))).observe(document.body, { childList: true, subtree: true });
 
   /* ---------- اللغة والحقوق ---------- */
   function copyrightText() {
@@ -1812,14 +1887,11 @@
       db.settings = {}; ui.pendingLogo = null; commit('استعادة الإعدادات الافتراضية'); toast('تمت الاستعادة');
     }, 'استعادة', false),
     'backup-export': () => {
-      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `almasiya-fleet-backup-${today()}.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      log('تصدير نسخة احتياطية'); Store.save(db);
-      toast('تم تنزيل النسخة الاحتياطية');
+      saveFile(`almasiya-fleet-backup-${today()}.json`, JSON.stringify(db, null, 2), 'application/json').then((ok) => {
+        if (!ok) return;
+        log('تصدير نسخة احتياطية'); Store.save(db);
+        if (!NATIVE) toast('تم تنزيل النسخة الاحتياطية');
+      });
     },
     'backup-reset': () => confirmBox('سيتم حذف جميع البيانات الحالية واستبدالها بالبيانات التجريبية. هل أنت متأكد؟', () => {
       const keepId = me.id;
@@ -1959,6 +2031,22 @@
      ======================================================================= */
   (function init() {
     I18N.apply();
+    // زر الرجوع في أندرويد: يغلق النافذة أو القائمة أولاً، ثم يعود للرئيسية، ثم يخرج من التطبيق
+    if (NATIVE && NP.App) {
+      NP.App.addListener('backButton', () => {
+        if ($('#modal-root').innerHTML) { if (!modalLocked) closeModal(); return; }
+        if ($('#sidebar').classList.contains('open')) { closeSidebar(); return; }
+        if (me) {
+          const home = Object.keys(PAGES).find((k) => PAGES[k].roles.includes(me.role));
+          if (currentRoute() !== home) { go(home); return; }
+        }
+        NP.App.exitApp();
+      });
+    }
+    // تطبيق الويب القابل للتثبيت (PWA): العمل دون اتصال
+    if (!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
     const sid = Store.getSession();
     const u = sid ? userById(sid) : null;
     me = u && u.active !== false ? u : null;

@@ -53,7 +53,7 @@ const I18N = (function () {
     'الماسية الدولية للمعدات ش.م.م': 'Al Masiya International Equipment LLC',
     'جميع الحقوق محفوظة لـ': 'All rights reserved —',
     'الإصدار': 'Version',
-    'الرئيسية': 'Main', 'التشغيل': 'Operations', 'الصيانة والمهام': 'Maintenance & Tasks', 'الإدارة': 'Administration',
+    'الرئيسية': 'Home', 'التشغيل': 'Operations', 'الصيانة والمهام': 'Maintenance & Tasks', 'الإدارة': 'Administration',
     'لوحة التحكم': 'Dashboard',
     'نظرة شاملة على حالة الأسطول والتنبيهات': 'Fleet status and alerts at a glance',
     'مركبتي ومهامي': 'My Vehicle & Tasks',
@@ -372,6 +372,8 @@ const I18N = (function () {
     'الملف غير صالح – يجب أن يكون نسخة احتياطية من هذا النظام': 'Invalid file – it must be a backup from this system',
     'تعذّر الحفظ: مساحة التخزين في المتصفح ممتلئة. احذف بعض الصور أو صدّر نسخة احتياطية.': 'Could not save: browser storage is full. Delete some photos or export a backup.',
     'اللغة': 'Language',
+    'المزيد': 'More', 'مركبتي': 'My vehicle', 'الساعات': 'Hours', 'الصيانة': 'Maintenance', 'الميدان': 'Field', 'المهام': 'Tasks', 'الأسطول': 'Fleet',
+    'التنقل السريع': 'Quick navigation', 'القائمة الرئيسية': 'Main menu', 'تعذّر حفظ الملف': 'Could not save the file',
     'الهوية البصرية': 'Branding', 'إضافة إلى الأسطول': 'Add to fleet', 'إضافة مركبة / معدة جديدة': 'Add new vehicle / equipment',
     'لوحة تحكم مركزية لمتابعة حالة الشاحنات والمعدات، التراخيص والتأمين، الصيانة، عقود التشغيل والإيجار، والمهام اليومية.': 'A central dashboard to track trucks and equipment, licences and insurance, maintenance, operating and rental contracts, and daily tasks.',
   };
@@ -392,7 +394,7 @@ const I18N = (function () {
   }
 
   const SKIP = 'textarea,script,style,[data-raw]';
-  const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+  const ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'data-label'];
 
   /** ترجمة عنصر وكل ما بداخله */
   function translate(root) {
@@ -409,7 +411,7 @@ const I18N = (function () {
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     nodes.forEach((n) => { const t = tr(n.data); if (t !== n.data) n.data = t; });
-    [root, ...root.querySelectorAll('[placeholder],[title],[aria-label],[alt]')].forEach((el) => {
+    [root, ...root.querySelectorAll('[placeholder],[title],[aria-label],[alt],[data-label]')].forEach((el) => {
       if (el.closest('[data-raw]')) return;
       ATTRS.forEach((a) => { const v = el.getAttribute(a); if (v && HAS_AR.test(v)) el.setAttribute(a, tr(v)); });
     });

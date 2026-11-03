@@ -1,0 +1,18 @@
+{
+  "appId": "om.almasiya.fleet",
+  "appName": "أسطول الماسية",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#f2f4f7",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DEFAULT",
+      "hidden": false
+    }
+  }
+}
