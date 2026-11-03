@@ -151,6 +151,12 @@ const Store = (function () {
       V({ id: 'v10', plateNo: '27788', plateCode: 'س ع', plateType: 'أشغال عامة', type: 'بوب كات', make: 'بوبكات S650', color: 'أبيض', year: 2020, chassis: 'B3BN11542ALB0217',
         licenseFrom: off(-120), licenseTo: off(245), insFrom: off(-120), insTo: off(245), insType: 'طرف ثالث (Third Party)',
         meterType: 'hours', meter: 3980, serviceInterval: 250, nextService: 4000, status: 'maintenance' }),
+      V({ id: 'v11', plateNo: '81204', plateCode: 'ك ه', plateType: 'خصوصي', type: 'صالون', make: 'تويوتا كامري', color: 'أبيض لؤلؤي', year: 2024, chassis: '4T1B11HK5RU093317',
+        licenseFrom: off(-90), licenseTo: off(275), insFrom: off(-90), insTo: off(275), insType: 'شامل (Comprehensive)',
+        meterType: 'km', meter: 18350, serviceInterval: 10000, nextService: 20000, status: 'idle', notes: 'سيارة الإدارة' }),
+      V({ id: 'v12', plateNo: '46751', plateCode: 'د ر', plateType: 'خصوصي', type: 'دفع رباعي', make: 'تويوتا لاندكروزر', color: 'أبيض', year: 2023, chassis: 'JTMHV05J804218876',
+        licenseFrom: off(-170), licenseTo: off(195), insFrom: off(-170), insTo: off(195), insType: 'شامل (Comprehensive)',
+        meterType: 'km', meter: 61200, serviceInterval: 10000, nextService: 70000, status: 'idle', notes: 'مخصصة لزيارات المشرفين للمواقع' }),
     ];
 
     // ساعات تشغيل لآخر 35 يوماً للمعدات العاملة (الجمعة عطلة)

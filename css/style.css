@@ -236,25 +236,24 @@ select.status-select {
   padding-inline-start: 12px; padding-inline-end: 26px;
 }
 
-/* Plate */
+/* Plate — يأخذ لونه من نوع اللوحة عبر --pbg / --pfg (انظر plateColors في config.js) */
 .plate {
+  --pbg: #fff; --pfg: #111;
   display: inline-flex; align-items: stretch; direction: ltr;
-  border: 2px solid #1f2937; border-radius: 6px; overflow: hidden; background: #fff;
+  background: var(--pbg); color: var(--pfg);
+  border: 2px solid color-mix(in srgb, var(--pbg) 55%, #000); border-radius: 6px; overflow: hidden;
   font-weight: 700; line-height: 1; white-space: nowrap;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pfg) 35%, transparent);
 }
 .plate .p-no { padding: 6px 9px; font-size: 15px; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
-.plate .p-code { padding: 6px 8px; font-size: 14px; border-inline-start: 1.5px solid #1f2937; direction: rtl; }
-.plate .p-strip { width: 7px; }
+.plate .p-code { padding: 6px 8px; font-size: 14px; border-inline-start: 1.5px solid color-mix(in srgb, var(--pfg) 45%, transparent); direction: rtl; }
 .plate.sm .p-no { font-size: 13px; padding: 4px 7px; }
 .plate.sm .p-code { font-size: 12px; padding: 4px 6px; }
-.plate.sm .p-strip { width: 5px; }
 .plate.lg .p-no { font-size: 24px; padding: 9px 14px; }
 .plate.lg .p-code { font-size: 20px; padding: 9px 12px; }
-.plate.lg .p-strip { width: 10px; }
-.pt-private .p-strip { background: #2563eb; }
-.pt-commercial .p-strip { background: #dc2626; }
-.pt-temp .p-strip { background: #16a34a; }
-.pt-works .p-strip { background: var(--accent); }
+.plate-legend { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.plate-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.plate-legend i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,.35); }
 
 /* Validity */
 .validity { display: inline-flex; flex-direction: column; line-height: 1.3; font-variant-numeric: tabular-nums; }

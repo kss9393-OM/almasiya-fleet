@@ -48,7 +48,6 @@
   const RENTAL_UNIT = { hourly: 'ساعة', daily: 'يوم', monthly: 'شهر' };
   const TS_STATUS = { pending: 'بانتظار الاعتماد', approved: 'معتمد', rejected: 'مرفوض' };
   const PROJECT_STATUS = { active: 'قيد التنفيذ', onhold: 'متوقف مؤقتاً', done: 'منتهي' };
-  const PLATE_CLASS = { 'خصوصي': 'pt-private', 'تجاري': 'pt-commercial', 'مؤقت': 'pt-temp', 'أشغال عامة': 'pt-works' };
   const SEVERITY = { high: 'شديد – توقف كامل', medium: 'متوسط', low: 'بسيط' };
 
   /* =======================================================================
@@ -244,7 +243,9 @@
      8) عناصر واجهة مشتركة
      ======================================================================= */
   const statusBadge = (s) => `<span class="badge st-${s}"><i class="dot"></i>${STATUS[s]?.label || s}</span>`;
-  const plate = (v, size = '') => v ? `<span class="plate ${size} ${PLATE_CLASS[v.plateType] || ''}" title="${esc(v.plateType)}"><span class="p-strip"></span><span class="p-no">${esc(v.plateNo)}</span>${v.plateCode ? `<span class="p-code">${esc(v.plateCode)}</span>` : ''}</span>` : '<span class="muted">—</span>';
+  // لون اللوحة حسب نوعها (من APP_CONFIG.plateColors): خصوصي أصفر • تجاري أحمر • مؤقت أسود
+  const plateStyle = (type) => { const c = (APP_CONFIG.plateColors || {})[type] || { bg: '#ffffff', fg: '#111111' }; return `--pbg:${c.bg};--pfg:${c.fg}`; };
+  const plate = (v, size = '') => v ? `<span class="plate ${size}" style="${plateStyle(v.plateType)}" title="لوحة ${esc(v.plateType)}"><span class="p-no">${esc(v.plateNo)}</span>${v.plateCode ? `<span class="p-code">${esc(v.plateCode)}</span>` : ''}</span>` : '<span class="muted">—</span>';
   const avatar = (u, extra = '') => `<span class="avatar r-${u ? u.role : ''} ${extra}" title="${esc(u ? u.name : '')}">${esc(initials(u ? u.name : '؟'))}</span>`;
   const ibtn = (ic, action, id, title, cls = '') => `<button class="ibtn ${cls}" data-action="${action}" data-id="${esc(id)}" title="${esc(title)}" aria-label="${esc(title)}">${icon(ic)}</button>`;
   const empty = (msg, ic = 'search') => `<div class="empty">${icon(ic)}<div>${msg}</div></div>`;
@@ -688,6 +689,7 @@
         ${can('vehicle.edit') ? `<button class="btn btn-primary" data-action="vehicle-new">${icon('plus')} إضافة مركبة / معدة</button>` : ''}
       </div>
       <div class="chips">${chips.map(([k, l, n]) => `<button class="chip ${f.status === k ? 'on' : ''} ${k ? 'chip-' + k : ''}" data-action="fleet-status" data-status="${k}">${k ? '<i class="dot"></i>' : ''}${l}<b>${n}</b></button>`).join('')}</div>
+      <div class="plate-legend section-gap">ألوان اللوحات: ${APP_CONFIG.plateTypes.map((t) => { const c = (APP_CONFIG.plateColors || {})[t] || { bg: '#fff' }; return `<span><i style="background:${c.bg}"></i>${esc(t)}</span>`; }).join('')}</div>
       <div class="card p0" id="fleetTable">${fleetTable()}</div>`;
   }
 
