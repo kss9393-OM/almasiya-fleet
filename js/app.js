@@ -276,13 +276,22 @@
     return `<span class="validity ${cls}">${fmtDate(date)}<small>${txt}</small></span>`;
   }
 
+  /** هل التشغيل بسائق من الشركة؟ (الإيجار قد يكون بدون سائق: يشغّلها العميل) */
+  const hasDriver = (a) => !!a && (a.kind === 'internal' || a.withDriver !== false);
+  function driverText(a) {
+    if (!a) return '—';
+    if (!hasDriver(a)) return 'بدون سائق' + (a.operatorName ? ` – مشغّل العميل: ${a.operatorName}` : '');
+    return uName(a.driverId);
+  }
+  const noDriverBadge = (a) => (a && !hasDriver(a) ? ' <span class="badge b-neutral">بدون سائق</span>' : '');
+
   function assignText(v, compact) {
     const a = v.assignment;
     if (!a) return '<span class="muted">غير مرتبطة بمشروع</span>';
-    const kind = a.kind === 'internal' ? '<span class="badge b-primary">مشروع داخلي</span>' : `<span class="badge b-accent">إيجار ${RENTAL[a.rentalType] || ''}</span>`;
+    const kind = (a.kind === 'internal' ? '<span class="badge b-primary">مشروع داخلي</span>' : `<span class="badge b-accent">إيجار ${RENTAL[a.rentalType] || ''}</span>`) + noDriverBadge(a);
     const who = a.kind === 'internal' ? pName(a.projectId) : (a.client || projById(a.projectId)?.client || pName(a.projectId));
     if (compact) return `${kind} <span class="cell-sub">${esc(who)}</span>`;
-    return `<div>${kind}</div><div class="cell-title" style="margin-top:4px">${esc(who)}</div><div class="cell-sub">${a.kind === 'internal' ? '' : esc(pName(a.projectId)) + ' • '}السائق: ${esc(uName(a.driverId))}</div>`;
+    return `<div>${kind}</div><div class="cell-title" style="margin-top:4px">${esc(who)}</div><div class="cell-sub">${a.kind === 'internal' ? '' : esc(pName(a.projectId)) + ' • '}${hasDriver(a) ? 'السائق: ' : ''}${esc(driverText(a))}</div>`;
   }
 
   const statusSelect = (v) => `<select class="status-select st-${v.status}" data-change="vehicle-status" data-id="${v.id}" aria-label="حالة المعدة">${STATUS_ORDER.map((s) => `<option value="${s}" ${s === v.status ? 'selected' : ''}>${STATUS[s].label}</option>`).join('')}</select>`;
@@ -759,7 +768,7 @@
               <td>${plate(v, 'sm')}<div class="cell-sub">${esc(v.type)}</div></td>
               <td>${v.assignment.kind === 'internal' ? '<span class="badge b-primary">داخلي</span>' : `<span class="badge b-accent">${RENTAL[v.assignment.rentalType]}</span>`}</td>
               <td><div class="cell-title">${esc(v.assignment.kind === 'internal' ? pName(v.assignment.projectId) : (v.assignment.client || pName(v.assignment.projectId)))}</div></td>
-              <td>${esc(uName(v.assignment.driverId))}</td></tr>`).join('')}
+              <td>${hasDriver(v.assignment) ? esc(uName(v.assignment.driverId)) : '<span class="badge b-neutral">بدون سائق</span>'}</td></tr>`).join('')}
           </tbody></table></div>` : empty('لا توجد معدات مرتبطة بمشاريع حالياً', 'briefcase')}
         </div>
       </div>
@@ -950,7 +959,7 @@
               <dt>النوع</dt><dd>${a.kind === 'internal' ? 'مشروع داخلي' : 'إيجار ' + RENTAL[a.rentalType]}</dd>
               <dt>المشروع</dt><dd>${esc(pName(a.projectId))}</dd>
               ${a.kind !== 'internal' ? `<dt>العميل</dt><dd>${esc(a.client || '—')}</dd><dt>السعر</dt><dd>${money(a.rate)} / ${RENTAL_UNIT[a.rentalType]}</dd>` : ''}
-              <dt>السائق</dt><dd>${esc(uName(a.driverId))}</dd>
+              <dt>السائق</dt><dd>${esc(driverText(a))}</dd>
               <dt>منذ</dt><dd>${fmtDate(a.startDate)}</dd>
               <dt>ساعات هذا الشهر</dt><dd class="num">${num(monthHours)} ساعة</dd>
             </dl>` : '<p class="muted">غير مرتبطة بأي مشروع أو عقد إيجار.</p>'}
@@ -1009,7 +1018,7 @@
           <td>${a ? (a.kind === 'internal' ? '<span class="badge b-primary">مشروع داخلي</span>' : `<span class="badge b-accent">إيجار ${RENTAL[a.rentalType]}</span>`) : '<span class="muted">—</span>'}</td>
           <td>${a ? esc(pName(a.projectId)) : '<span class="muted">—</span>'}</td>
           <td>${a && a.kind !== 'internal' ? esc(a.client) : '<span class="muted">—</span>'}</td>
-          <td>${a ? esc(uName(a.driverId)) : '<span class="muted">—</span>'}</td>
+          <td>${a ? (hasDriver(a) ? esc(uName(a.driverId)) : `<span class="badge b-neutral">بدون سائق</span>${a.operatorName ? `<div class="cell-sub">مشغّل العميل: ${esc(a.operatorName)}</div>` : ''}`) : '<span class="muted">—</span>'}</td>
           <td class="num">${a && a.kind !== 'internal' ? `${money(a.rate)}<div class="cell-sub">/ ${RENTAL_UNIT[a.rentalType]}</div>` : '<span class="muted">—</span>'}</td>
           <td>${a ? fmtDate(a.startDate) : '<span class="muted">—</span>'}</td>
           <td><div class="actions">${ibtn('link', 'assign', v.id, a ? 'تعديل التشغيل' : 'ربط بمشروع')}${a ? ibtn('unlink', 'release', v.id, 'فك الارتباط', 'danger') : ''}</div></td>
@@ -1020,7 +1029,7 @@
     const v = vehById(id);
     if (!v) return;
     if (v.status === 'maintenance' || v.status === 'breakdown') toast('تنبيه: المعدة حالياً ' + STATUS[v.status].label, 'warn');
-    const a = v.assignment || { kind: 'rental', rentalType: 'daily', projectId: '', client: '', driverId: '', rate: '', startDate: today() };
+    const a = v.assignment || { kind: 'rental', rentalType: 'daily', projectId: '', client: '', driverId: '', withDriver: true, operatorName: '', rate: '', startDate: today() };
     const projs = db.projects.filter((p) => p.status !== 'done');
     openModal({
       title: `ربط المعدة بمشروع / عقد إيجار – ${vShort(v)}`, size: 'lg', submit: 'حفظ وتحويل الحالة إلى «في العمل»',
@@ -1030,23 +1039,29 @@
         ${field('سعر الإيجار (' + APP_CONFIG.currency + ')', `<input name="rate" type="number" min="0" step="0.001" value="${esc(a.rate)}">`, 'rental-only')}
         ${field('المشروع *', `<select name="projectId" required data-change="assign-project">${opts(projs.map((p) => ({ value: p.id, label: p.name + (p.client ? ' – ' + p.client : '') })), a.projectId, 'اختر المشروع')}</select>`, 'span2')}
         ${field('اسم العميل', `<input name="client" value="${esc(a.client)}" placeholder="يُعبأ تلقائياً من المشروع">`, 'rental-only')}
-        ${field('السائق / المشغل *', `<select name="driverId" required>${opts(userOpts(usersByRole('driver')), a.driverId, 'اختر السائق')}</select>`)}
+        ${field('طريقة التشغيل', `<select name="withDriver" data-change="assign-kind">${opts([{ value: 'yes', label: 'مع سائق من الشركة' }, { value: 'no', label: 'بدون سائق – يشغّلها العميل' }], hasDriver(a) ? 'yes' : 'no')}</select>`, 'rental-only')}
+        ${field('السائق / المشغل *', `<select name="driverId">${opts(userOpts(usersByRole('driver')), a.driverId, 'اختر السائق')}</select>`, 'driver-only')}
+        ${field('اسم مشغّل العميل', `<input name="operatorName" value="${esc(a.operatorName || '')}" placeholder="اختياري – من يشغّل المعدة لدى العميل">`, 'nodriver-only')}
         ${field('تاريخ البدء', `<input name="startDate" type="date" value="${esc(a.startDate || today())}">`)}
       </div>`,
       onSubmit: (d) => {
         if (d.kind === 'rental' && !(Number(d.rate) > 0)) { toast('أدخل سعر الإيجار', 'error'); return false; }
+        const withDriver = d.kind === 'internal' || d.withDriver !== 'no';
+        if (withDriver && !d.driverId) { toast('اختر السائق / المشغل', 'error'); return false; }
         const p = projById(d.projectId);
         v.assignment = {
           kind: d.kind,
           rentalType: d.kind === 'rental' ? d.rentalType : '',
           projectId: d.projectId,
           client: d.kind === 'rental' ? (d.client || p?.client || '') : '',
-          driverId: d.driverId,
+          driverId: withDriver ? d.driverId : '',
+          withDriver,
+          operatorName: withDriver ? '' : (d.operatorName || ''),
           rate: d.kind === 'rental' ? Number(d.rate) : 0,
           startDate: d.startDate || today(),
         };
         v.status = 'active';
-        commit(`ربط ${vLabel(v)} بـ «${p ? p.name : ''}» – ${d.kind === 'internal' ? 'مشروع داخلي' : 'إيجار ' + RENTAL[d.rentalType]}`);
+        commit(`ربط ${vLabel(v)} بـ «${p ? p.name : ''}» – ${d.kind === 'internal' ? 'مشروع داخلي' : 'إيجار ' + RENTAL[d.rentalType] + (withDriver ? '' : ' بدون سائق')}`);
         toast('تم ربط المعدة وتحويل حالتها إلى «في العمل»');
       },
     });
@@ -1055,7 +1070,12 @@
   function toggleRentalFields() {
     const kind = $('#modalForm select[name=kind]');
     if (!kind) return;
-    $$('#modalForm .rental-only').forEach((el) => { el.style.display = kind.value === 'rental' ? '' : 'none'; });
+    const rental = kind.value === 'rental';
+    const wd = $('#modalForm select[name=withDriver]');
+    const noDriver = rental && wd && wd.value === 'no';
+    $$('#modalForm .rental-only').forEach((el) => { el.style.display = rental ? '' : 'none'; });
+    $$('#modalForm .driver-only').forEach((el) => { el.style.display = noDriver ? 'none' : ''; });
+    $$('#modalForm .nodriver-only').forEach((el) => { el.style.display = noDriver ? '' : 'none'; });
   }
 
   /* =======================================================================
@@ -1089,7 +1109,7 @@
       ${list.map((t) => { const v = vehById(t.vehicleId); return `<tr>
         <td class="num" style="white-space:nowrap">${fmtDate(t.date)}<div class="cell-sub">${DAYS[parseDate(t.date).getDay()]}</div></td>
         <td>${v ? plate(v, 'sm') : '—'}${compact ? '' : `<div class="cell-sub">${esc(v ? v.type : '')}</div>`}</td>
-        ${compact ? '' : `<td>${esc(pName(t.projectId))}</td><td>${esc(uName(t.driverId))}</td>`}
+        ${compact ? '' : `<td>${esc(pName(t.projectId))}</td><td>${t.driverId ? esc(uName(t.driverId)) : '<span class="muted">بدون سائق</span>'}</td>`}
         <td class="num"><b>${num(t.hours, Number(t.hours) % 1 ? 1 : 0)}</b></td>
         ${compact ? '' : `<td class="num">${t.km ? num(t.km) + ' كم' : '—'}</td><td class="cell-sub" style="max-width:220px">${esc(t.notes || '')}</td>`}
         <td><span class="badge ${t.status === 'approved' ? 'b-ok' : t.status === 'rejected' ? 'b-bad' : 'b-warn'}">${TS_STATUS[t.status]}</span>${t.invoiceId ? '<div class="cell-sub">مفوتر</div>' : ''}</td>
@@ -1109,10 +1129,10 @@
       title: 'تسجيل ساعات تشغيل يومية',
       body: `<div class="form-grid two">
         ${field('التاريخ *', `<input name="date" type="date" required max="${today()}" value="${today()}">`)}
-        ${field('المعدة *', `<select name="vehicleId" required>${opts(vehicleOpts(vList), def.id)}</select>`)}
+        ${field('المعدة *', `<select name="vehicleId" required data-change="ts-vehicle">${opts(vehicleOpts(vList), def.id)}</select>`)}
         ${field('عدد الساعات *', `<input name="hours" type="number" required min="0.5" max="24" step="0.5" value="8">`)}
         ${field('المسافة المقطوعة (كم)', `<input name="km" type="number" min="0" value=""><span class="hint">للشاحنات والمركبات ذات عداد الكيلومترات</span>`)}
-        ${isDriver ? '' : field('السائق / المشغل', `<select name="driverId">${opts(userOpts(usersByRole('driver')), def.assignment?.driverId)}</select>`)}
+        ${isDriver ? '' : field('السائق / المشغل', `<select name="driverId">${opts(userOpts(usersByRole('driver')), hasDriver(def.assignment) ? def.assignment?.driverId : '', 'بدون سائق (يشغّلها العميل)')}</select>`)}
         ${field('ملاحظات', `<textarea name="notes" rows="2" placeholder="طبيعة العمل، الموقع، أي توقفات…"></textarea>`, 'full')}
       </div>`,
       onSubmit: (d) => {
@@ -1121,7 +1141,7 @@
         if (dup) { toast('يوجد سجل لنفس المعدة في هذا التاريخ', 'error'); return false; }
         db.timesheets.push({
           id: uid('ts'), date: d.date, vehicleId: d.vehicleId, projectId: v.assignment?.projectId || '',
-          driverId: isDriver ? me.id : (d.driverId || v.assignment?.driverId || ''),
+          driverId: isDriver ? me.id : (d.driverId || ''),
           hours: Number(d.hours), km: Number(d.km || 0), notes: d.notes || '', status: 'pending',
           createdBy: me.id, approvedBy: '', invoiceId: '',
         });
@@ -1619,7 +1639,7 @@
       const days = new Set(list.map((t) => t.date)).size;
       const rt = a.rentalType || 'hourly';
       const qty = rt === 'hourly' ? hours : rt === 'daily' ? days : 1;
-      return { vehicleId: vid, desc: `${v ? v.type + ' ' + v.make + ' – لوحة ' + v.plateNo + ' ' + v.plateCode : 'معدة'}`, rentalType: rt, hours, days, qty, rate: Number(a.rate || 0), amount: qty * Number(a.rate || 0) };
+      return { vehicleId: vid, desc: `${v ? v.type + ' ' + v.make + ' – لوحة ' + v.plateNo + ' ' + v.plateCode : 'معدة'}${hasDriver(a) ? ' – مع سائق' : ' – بدون سائق'}`, rentalType: rt, hours, days, qty, rate: Number(a.rate || 0), amount: qty * Number(a.rate || 0) };
     });
     const subtotal = lines.reduce((s, l) => s + l.amount, 0);
     const vat = subtotal * APP_CONFIG.vatRate;
@@ -2018,6 +2038,12 @@
   };
 
   const CHANGES = {
+    // تسجيل الساعات: السائق يتبع المعدة المختارة (فارغ للمعدات المؤجرة بدون سائق)
+    'ts-vehicle': (el) => {
+      const v = vehById(el.value);
+      const sel = $('#modalForm select[name=driverId]');
+      if (sel && v) sel.value = hasDriver(v.assignment) ? (v.assignment.driverId || '') : '';
+    },
     'vehicle-status': (el) => {
       const v = vehById(el.dataset.id);
       const s = el.value;
