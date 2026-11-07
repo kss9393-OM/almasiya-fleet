@@ -53,6 +53,7 @@ jobs:
           path: |
             desktop/dist/Almasiya-Fleet-Setup.exe
             desktop/windows-smoke.png
+            desktop/windows-about.png
           if-no-files-found: ignore
 
       - name: Publish (rolling release used by auto-update)

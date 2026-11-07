@@ -165,6 +165,11 @@ button, a, select, label { touch-action: manipulation; }
   .plate.lg .p-code { font-size: 17px; padding: 8px 10px; }
   .inv-head { flex-direction: column; }
   .inv-total { width: 100%; }
+  .about-hero { padding: 16px; gap: 12px; }
+  .about-hero img { width: 56px; height: 56px; }
+  .about-hero h2 { font-size: 17px; }
+  .about-edit { width: 100%; }
+  .contacts { grid-template-columns: minmax(0, 1fr); }
 
   /* ---------- النماذج: لمس مريح ---------- */
   input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]), select, textarea { font-size: 16px; min-height: 46px; border-radius: 11px; }

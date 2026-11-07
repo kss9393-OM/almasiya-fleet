@@ -587,6 +587,48 @@ input[type=color] { width: 46px; height: 38px; padding: 2px; border: 1px solid v
 .boot .ic { width: 34px; height: 34px; color: var(--primary); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* About page */
+.about { max-width: 1100px; }
+.about-hero {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  background: linear-gradient(135deg, var(--sidebar), var(--primary-strong)); color: #fff;
+  border-radius: var(--radius); padding: 22px 24px; margin-bottom: 18px; position: relative; overflow: hidden;
+}
+.about-hero::after { content: ''; position: absolute; inset-inline-end: -40px; top: -60px; width: 200px; height: 200px; background: var(--accent); opacity: .12; transform: rotate(45deg); border-radius: 24px; }
+.about-hero img { width: 72px; height: 72px; border-radius: 16px; background: rgba(255,255,255,.08); object-fit: contain; position: relative; z-index: 1; }
+.about-hero .grow { flex: 1; min-width: 200px; position: relative; z-index: 1; }
+.about-hero h2 { font-size: 21px; }
+.about-hero p { color: rgba(255,255,255,.75); font-size: 13.5px; }
+.about-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.about-tags .badge { background: rgba(255,255,255,.14); color: #fff; }
+.about-tags .badge .ic { width: 14px; height: 14px; }
+.about-edit { position: relative; z-index: 1; background: rgba(255,255,255,.95); }
+.about-desc { line-height: 1.85; color: #334155; white-space: pre-line; }
+.about-sub { font-size: 13px; color: var(--primary); margin: 16px 0 8px; }
+.about-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.about-features li { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.about-features .ic { width: 16px; height: 16px; color: var(--ok); margin-top: 3px; }
+.about-kv { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.about-dev { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.dev-logo { width: 64px; height: 64px; border-radius: 14px; object-fit: contain; border: 1px solid var(--border); background: var(--surface-2); flex: none; }
+.dev-logo-ph { display: inline-flex; align-items: center; justify-content: center; color: var(--primary); }
+.dev-logo-ph .ic { width: 28px; height: 28px; }
+.dev-name { font-size: 17px; display: block; margin-bottom: 4px; }
+.contacts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.contact { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); background: var(--surface-2); transition: border-color .15s, background .15s; min-width: 0; }
+a.contact:hover { border-color: var(--primary); background: var(--primary-soft); }
+.contact > .ic { width: 20px; height: 20px; color: var(--primary); flex: none; }
+.contact span { display: flex; flex-direction: column; min-width: 0; }
+.contact small { color: var(--muted); font-size: 11.5px; }
+.contact b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact b[dir=ltr] { text-align: start; }
+.about-empty { font-size: 13px; }
+.about-copy { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 18px; line-height: 1.8; }
+.about-copy span { font-size: 11.5px; }
+.login-about { display: inline-flex; align-items: center; justify-content: center; gap: 6px; align-self: center; }
+.login-about .ic { width: 15px; height: 15px; }
+.modal .about-hero { margin: -2px 0 14px; }
+
 /* ------------------------------------------------------------------ */
 /* Language toggle & LTR (English) adjustments                         */
 /* ------------------------------------------------------------------ */

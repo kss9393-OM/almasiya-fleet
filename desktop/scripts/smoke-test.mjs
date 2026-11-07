@@ -22,6 +22,18 @@ try {
   const size = await page.evaluate(() => [innerWidth, innerHeight]);
   check('desktop window size (maximized)', size[0] >= 1024, size.join('x'));
 
+  // صفحة «حول»: قائمة مساعدة ← حول (F1) تفتحها، وتعرض إصدار التطبيق الفعلي ومنصة ويندوز
+  const appVersion = await app.evaluate(({ app }) => app.getVersion());
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('open-about'));
+  await page.waitForSelector('#modalForm .about-hero', { timeout: 15000 });
+  const about = await page.evaluate(() => document.querySelector('#modalForm').innerText);
+  check('Help → About opens the About page', /عن المطور/.test(about) && /عن البرنامج/.test(about));
+  check('About shows the real app version', about.includes(appVersion), `v${appVersion}`);
+  check('About shows the Windows platform', /تطبيق ويندوز/.test(about));
+  check('desktop bridge exposed safely', await page.evaluate(() => !!window.desktop && typeof window.desktop.getInfo === 'function' && typeof require === 'undefined'));
+  await page.screenshot({ path: 'windows-about.png' });
+  await page.click('.modal-head [data-action=close-modal]');
+
   // الاتصال بالخادم: محاولة دخول بكلمة مرور خاطئة يجب أن يرفضها الخادم (لا خطأ اتصال)
   await page.fill('input[name=username]', 'dev');
   await page.fill('input[name=password]', 'WrongPassword123');

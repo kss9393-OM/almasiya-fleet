@@ -14,7 +14,7 @@ const Store = (function () {
   const CFG = APP_CONFIG.supabase;
   const TABLES = ['vehicles', 'projects', 'timesheets', 'tasks', 'reports', 'invoices', 'activity'];
   const APPEND_ONLY = { activity: true };           // سجل النشاط: إضافة فقط، لا حذف
-  const SETTINGS_ROWS = { settings: 'settings', seq: 'seq', opReports: 'opReports' };
+  const SETTINGS_ROWS = { settings: 'settings', seq: 'seq', opReports: 'opReports', about: 'about' };
   const CACHE_KEY = APP_CONFIG.storageKey + '_cache';
   const ACTIVITY_LIMIT = 150;
 
@@ -138,7 +138,7 @@ const Store = (function () {
     if (settingsRows.error) throw settingsRows.error;
     if (activity.error) throw activity.error;
 
-    const next = { users: profiles.data.map(profileToUser), settings: {}, seq: { invoice: 0 }, opReports: {} };
+    const next = { users: profiles.data.map(profileToUser), settings: {}, seq: { invoice: 0 }, opReports: {}, about: {} };
     snap = {};
     TABLES.filter((t) => t !== 'activity').forEach((t, i) => {
       next[t] = rest[i].map((r) => Object.assign({}, r.data, { id: r.id }));

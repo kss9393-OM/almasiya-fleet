@@ -2,7 +2,8 @@
 // تطبيق ويندوز لنظام إدارة الأسطول والمعدات — Electron
 'use strict';
 
-const { app, BrowserWindow, protocol, net, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, protocol, net, shell, Menu, dialog, ipcMain } = require('electron');
+const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
@@ -38,6 +39,7 @@ function createWindow() {
       sandbox: true,
       spellcheck: false,
       devTools: !app.isPackaged,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -45,14 +47,15 @@ function createWindow() {
   win.loadURL(APP_URL);
 
   // الروابط الخارجية تُفتح في المتصفح، ولا يُسمح بالتنقل خارج التطبيق
+  const EXTERNAL = /^(https?:\/\/|mailto:|tel:)/i;
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    if (EXTERNAL.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
     if (!url.startsWith('app://')) {
       e.preventDefault();
-      if (/^https?:\/\//.test(url)) shell.openExternal(url);
+      if (EXTERNAL.test(url)) shell.openExternal(url);
     }
   });
 
@@ -101,20 +104,33 @@ function buildMenu() {
       label: ar ? 'مساعدة' : 'Help',
       submenu: [
         { label: ar ? 'البحث عن تحديثات' : 'Check for updates', click: () => checkUpdates(true) },
-        {
-          label: ar ? 'حول التطبيق' : 'About',
-          click: () => dialog.showMessageBox(win, {
-            type: 'info',
-            title: ar ? 'حول التطبيق' : 'About',
-            message: ar ? 'نظام إدارة الأسطول والمعدات' : 'Fleet & Equipment Management System',
-            detail: `${ar ? 'الماسية الدولية للمعدات ش.م.م' : 'Al Masiya International Equipment LLC'}\n${ar ? 'الإصدار' : 'Version'} ${app.getVersion()}\n\n© ${new Date().getFullYear()} ${ar ? 'جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م' : 'All rights reserved — Services Square LLC'}`,
-          }),
-        },
+        { type: 'separator' },
+        { label: ar ? 'حول البرنامج والمطور' : 'About', accelerator: 'F1', click: () => openAbout() },
       ],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
+
+// صفحة «حول» داخل التطبيق (يعدّل المطور محتواها من إعدادات المطور)
+function openAbout() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.focus();
+  win.webContents.send('open-about');
+}
+
+// معلومات التطبيق لصفحة «حول»
+ipcMain.handle('app-info', () => ({
+  version: app.getVersion(),
+  platform: 'windows',
+  os: `Windows ${os.release()}`,
+  arch: process.arch,
+  electron: process.versions.electron,
+  chrome: process.versions.chrome,
+  packaged: app.isPackaged,
+}));
+ipcMain.handle('check-updates', () => { checkUpdates(true); return app.isPackaged; });
 
 // التحديث التلقائي من صفحة الإصدارات على GitHub
 let updater = null;

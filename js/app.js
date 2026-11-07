@@ -93,6 +93,12 @@
     activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>',
     lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+    mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>',
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/>',
+    code: '<path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>',
+    monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
     key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
     eyeOff: '<path d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M1 1l22 22"/>',
   };
@@ -386,12 +392,14 @@
     invoices: { title: 'الفواتير وتقارير التشغيل', sub: 'تقارير التشغيل الشهرية وإصدار واعتماد فواتير الإيجار', icon: 'file', roles: ['developer', 'manager'], view: viewInvoices },
     users: { title: 'المستخدمون والصلاحيات', sub: 'إضافة المستخدمين وتحديد أدوارهم', icon: 'users', roles: ['developer', 'manager'], view: viewUsers },
     settings: { title: 'إعدادات المطور', sub: 'الهوية البصرية، إعدادات النظام، والنسخ الاحتياطي', icon: 'settings', roles: ['developer'], view: viewSettings },
+    about: { short: 'حول', title: 'حول البرنامج', sub: 'معلومات البرنامج والإصدار والمطور', icon: 'info', roles: ALL, view: viewAbout },
   };
   const NAV_GROUPS = [
     ['الرئيسية', ['dashboard', 'mywork']],
     ['التشغيل', ['fleet', 'operations', 'timesheets', 'field']],
     ['الصيانة والمهام', ['maintenance', 'tasks']],
     ['الإدارة', ['projects', 'invoices', 'users', 'settings']],
+    ['المساعدة', ['about']],
   ];
 
   const currentRoute = () => (location.hash || '').replace(/^#\/?/, '').split('?')[0];
@@ -456,6 +464,7 @@
 
   function render() {
     applyBranding();
+    if (db && db.about) cacheAbout(db.about);
     if (!me || !db) { setBars('DARK'); showLogin(); return; }
     setBars('LIGHT');
     $('#login-screen').classList.add('hidden');
@@ -510,6 +519,7 @@
           </label>
           <button type="submit" class="btn btn-primary btn-block" id="loginBtn">${icon('logout', 'flip')} دخول</button>
           <p class="muted login-help">نسيت كلمة المرور؟ تواصل مع مدير النظام لإعادة تعيينها.</p>
+          <button type="button" class="btn-link login-about" data-action="about-open">${icon('info')} حول البرنامج والمطور</button>
         </form>
         <footer class="login-copy">${esc(copyrightText())}</footer>
         <button type="button" class="lang-btn login-lang" data-action="lang-toggle">${langBtnLabel()}</button>
@@ -1767,6 +1777,173 @@
   }
 
   /* =======================================================================
+     22-ب) حول البرنامج والمطور
+     -----------------------------------------------------------------------
+     المحتوى في قاعدة البيانات (app_settings / about) ويعدّله المطور فقط،
+     والقيم الافتراضية في APP_CONFIG.about داخل js/config.js.
+     ======================================================================= */
+  const ABOUT_CACHE = APP_CONFIG.storageKey + '_about';
+  function cacheAbout(a) { try { localStorage.setItem(ABOUT_CACHE, JSON.stringify(a)); } catch (e) { /* ignore */ } }
+  function cachedAbout() { try { return JSON.parse(localStorage.getItem(ABOUT_CACHE) || '{}') || {}; } catch (e) { return {}; } }
+
+  /** المحتوى الفعلي: ما حفظه المطور، وإلا القيم الافتراضية */
+  function aboutData() {
+    const saved = (db && db.about) || cachedAbout();
+    const base = APP_CONFIG.about || {};
+    const out = {};
+    Object.keys(base).forEach((k) => { out[k] = saved[k] !== undefined && saved[k] !== null ? String(saved[k]) : String(base[k] ?? ''); });
+    return out;
+  }
+  /** النص حسب لغة الواجهة، مع الرجوع للعربية إن لم يُكتب الإنجليزي */
+  const aboutText = (a, key) => (I18N.lang === 'en' ? (a[key + 'En'] || a[key + 'Ar']) : (a[key + 'Ar'] || a[key + 'En'])) || '';
+
+  /* معلومات المنصة والإصدار (ويندوز من التطبيق نفسه، أندرويد من Capacitor) */
+  const platform = { kind: window.desktop ? 'windows' : NATIVE ? 'android' : 'web', version: APP_CONFIG.version, extra: '' };
+  async function loadPlatformInfo() {
+    try {
+      if (window.desktop && window.desktop.getInfo) {
+        const i = await window.desktop.getInfo();
+        platform.version = i.version || platform.version;
+        platform.extra = `${i.os || ''} • ${i.arch || ''} • Electron ${i.electron || ''}`;
+      } else if (NATIVE && NP.App && NP.App.getInfo) {
+        const i = await NP.App.getInfo();
+        platform.version = i.version || platform.version;
+        platform.extra = `Build ${i.build || ''}`;
+      }
+    } catch (e) { /* ignore */ }
+    if (me && db && currentRoute() === 'about') render();
+  }
+  const PLATFORM_LABEL = { windows: 'تطبيق ويندوز', android: 'تطبيق أندرويد', web: 'الموقع (المتصفح)' };
+  const PLATFORM_ICON = { windows: 'monitor', android: 'phone', web: 'globe' };
+
+  const safeUrl = (u) => { const v = String(u || '').trim(); if (!v) return ''; return /^https?:\/\//i.test(v) ? v : 'https://' + v; };
+  const telUrl = (n) => 'tel:' + String(n || '').replace(/[^\d+]/g, '');
+  const waUrl = (n) => 'https://wa.me/' + String(n || '').replace(/\D/g, '');
+
+  /** محتوى «حول» (يُستخدم في الصفحة وفي النافذة قبل تسجيل الدخول) */
+  function aboutBody(inModal) {
+    const s = S();
+    const a = aboutData();
+    const year = new Date().getFullYear();
+    const features = aboutText(a, 'features').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+    const devName = aboutText(a, 'developerName');
+    const bio = aboutText(a, 'developerBio');
+    const address = aboutText(a, 'address');
+    const contacts = [
+      a.phone && `<a class="contact" href="${esc(telUrl(a.phone))}">${icon('phone')}<span><small>الهاتف</small><b class="num" dir="ltr">${esc(a.phone)}</b></span></a>`,
+      a.whatsapp && `<a class="contact" href="${esc(waUrl(a.whatsapp))}" target="_blank" rel="noopener">${icon('chat')}<span><small>واتساب</small><b class="num" dir="ltr">${esc(a.whatsapp)}</b></span></a>`,
+      a.email && `<a class="contact" href="mailto:${esc(a.email)}">${icon('mail')}<span><small>البريد الإلكتروني</small><b dir="ltr">${esc(a.email)}</b></span></a>`,
+      a.website && `<a class="contact" href="${esc(safeUrl(a.website))}" target="_blank" rel="noopener">${icon('globe')}<span><small>الموقع الإلكتروني</small><b dir="ltr">${esc(a.website.replace(/^https?:\/\//i, ''))}</b></span></a>`,
+      address && `<div class="contact">${icon('pin')}<span><small>العنوان</small><b data-raw>${esc(address)}</b></span></div>`,
+    ].filter(Boolean);
+    const isDev = !!me && me.role === 'developer';
+    return `
+      <section class="about-hero">
+        <img src="${esc(s.logo)}" alt="">
+        <div class="grow">
+          <h2>${esc(s.systemName)}</h2>
+          <p>${esc(I18N.lang === 'en' && s.companyNameEn ? s.companyNameEn : s.companyName)}</p>
+          <div class="about-tags">
+            <span class="badge b-primary">${icon(PLATFORM_ICON[platform.kind])} ${PLATFORM_LABEL[platform.kind]}</span>
+            <span class="badge b-accent">الإصدار <b class="num">${esc(platform.version)}</b></span>
+          </div>
+        </div>
+        ${!inModal && isDev ? `<button class="btn btn-ghost btn-sm about-edit" data-action="about-edit">${icon('edit')} تعديل هذه الصفحة</button>` : ''}
+      </section>
+      <div class="${inModal ? 'stack' : 'grid-2'}">
+        <div class="card">
+          <div class="card-head"><h3>${icon('truck')} عن البرنامج</h3></div>
+          ${aboutText(a, 'description') ? `<p class="about-desc" data-raw>${esc(aboutText(a, 'description'))}</p>` : ''}
+          ${features.length ? `<h4 class="about-sub">المزايا</h4><ul class="about-features" data-raw>${features.map((f) => `<li>${icon('check')}<span>${esc(f)}</span></li>`).join('')}</ul>` : ''}
+          <dl class="kv about-kv">
+            <dt>الإصدار</dt><dd class="num">${esc(platform.version)}</dd>
+            <dt>المنصة</dt><dd>${PLATFORM_LABEL[platform.kind]}${platform.extra ? `<div class="cell-sub num" data-raw><bdi>${esc(platform.extra)}</bdi></div>` : ''}</dd>
+            <dt>المنصات المتاحة</dt><dd>الموقع • أندرويد • ويندوز</dd>
+            <dt>البيانات</dt><dd>قاعدة بيانات مركزية متزامنة لحظياً</dd>
+          </dl>
+          ${platform.kind === 'windows' ? `<button class="btn btn-ghost btn-sm" data-action="about-updates" style="margin-top:12px">${icon('refresh')} البحث عن تحديثات</button>` : ''}
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>${icon('code')} عن المطور</h3></div>
+          <div class="about-dev">
+            ${a.developerLogo ? `<img class="dev-logo" src="${esc(a.developerLogo)}" alt="">` : `<span class="dev-logo dev-logo-ph">${icon('code')}</span>`}
+            <div><b class="dev-name" data-raw>${esc(devName)}</b>${bio ? `<p class="about-desc" data-raw>${esc(bio)}</p>` : ''}</div>
+          </div>
+          ${contacts.length ? `<div class="contacts">${contacts.join('')}</div>`
+            : `<p class="muted about-empty">${isDev ? 'لم تُضف بيانات التواصل بعد — أضفها من «تعديل هذه الصفحة».' : 'للدعم الفني تواصل مع مدير النظام.'}</p>`}
+        </div>
+      </div>
+      <p class="about-copy">© ${year} ${I18N.lang === 'en' ? `All rights reserved — ${esc(APP_CONFIG.copyrightHolderEn || APP_CONFIG.copyrightHolder)}` : `جميع الحقوق محفوظة لـ ${esc(APP_CONFIG.copyrightHolder)}`}<br><span>يُمنع نسخ البرنامج أو إعادة توزيعه أو استخدامه تجارياً دون إذن كتابي من المالك.</span></p>`;
+  }
+
+  function viewAbout() { return `<div class="about">${aboutBody(false)}</div>`; }
+
+  /** يُستدعى من قائمة ويندوز (مساعدة ← حول) ومن شاشة الدخول */
+  let platformReady = Promise.resolve();
+  async function openAbout() {
+    await platformReady.catch(() => {});
+    if (me && db) { go('about'); return; }
+    openModal({ title: 'حول البرنامج والمطور', size: 'lg', body: `<div class="about">${aboutBody(true)}</div>` });
+  }
+
+  /* محرر صفحة «حول» في إعدادات المطور */
+  function aboutEditor() {
+    const a = aboutData();
+    const logo = ui.pendingDevLogo !== undefined && ui.pendingDevLogo !== null ? ui.pendingDevLogo : a.developerLogo;
+    const ta = (name, label, rows = 3, ltr = false) => field(label, `<textarea name="${name}" rows="${rows}" ${ltr ? 'dir="ltr"' : ''}>${esc(a[name])}</textarea>`);
+    const inp = (name, label, ltr = false, type = 'text', ph = '') => field(label, `<input name="${name}" type="${type}" value="${esc(a[name])}" ${ltr ? 'dir="ltr"' : ''} ${ph ? `placeholder="${esc(ph)}"` : ''}>`);
+    return `<form class="card section-gap" data-form="about" id="aboutEditor">
+      <div class="card-head"><h3>${icon('info')} صفحة «حول البرنامج والمطور»</h3><button type="button" class="btn-link" data-action="goto" data-route="about">${icon('eye')} معاينة</button></div>
+      <p class="cell-sub" style="margin-bottom:12px">يظهر هذا المحتوى لجميع المستخدمين في الموقع وتطبيقي أندرويد وويندوز (قائمة مساعدة ← حول، أو F1). الحقول الفارغة لا تُعرض.</p>
+      <div class="form-grid two">
+        <h4 class="form-sec">عن البرنامج</h4>
+        ${ta('descriptionAr', 'وصف البرنامج (عربي)', 4)}
+        ${ta('descriptionEn', 'وصف البرنامج (إنجليزي)', 4, true)}
+        ${ta('featuresAr', 'المزايا (عربي) — ميزة في كل سطر', 6)}
+        ${ta('featuresEn', 'المزايا (إنجليزي) — ميزة في كل سطر', 6, true)}
+        <h4 class="form-sec">عن المطور</h4>
+        ${inp('developerNameAr', 'اسم المطور (عربي)')}
+        ${inp('developerNameEn', 'اسم المطور (إنجليزي)', true)}
+        ${ta('developerBioAr', 'نبذة عن المطور (عربي)')}
+        ${ta('developerBioEn', 'نبذة عن المطور (إنجليزي)', 3, true)}
+        <div class="field full"><span>شعار المطور</span>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            ${logo ? `<img class="logo-preview" id="devLogoPreview" src="${esc(logo)}" alt="">` : `<span class="logo-preview dev-logo-ph" id="devLogoPreview">${icon('code')}</span>`}
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer">${icon('upload')} رفع شعار<input type="file" accept="image/*" data-change="dev-logo-file" hidden></label>
+              ${logo ? `<button type="button" class="btn-link" data-action="dev-logo-remove">إزالة الشعار</button>` : ''}
+            </div>
+          </div>
+        </div>
+        <h4 class="form-sec">بيانات التواصل</h4>
+        ${inp('phone', 'الهاتف', true, 'tel', '+968 ')}
+        ${inp('whatsapp', 'واتساب', true, 'tel', '+968 ')}
+        ${inp('email', 'البريد الإلكتروني', true, 'email', 'name@example.com')}
+        ${inp('website', 'الموقع الإلكتروني', true, 'text', 'www.example.com')}
+        ${inp('addressAr', 'العنوان (عربي)')}
+        ${inp('addressEn', 'العنوان (إنجليزي)', true)}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button type="submit" class="btn btn-primary">${icon('check')} حفظ صفحة «حول»</button>
+        <button type="button" class="btn btn-ghost" data-action="about-defaults">استعادة النص الافتراضي</button>
+      </div>
+    </form>`;
+  }
+
+  function saveAbout(form) {
+    const d = formData(form);
+    const keys = Object.keys(APP_CONFIG.about || {}).filter((k) => k !== 'developerLogo');
+    const next = {};
+    keys.forEach((k) => { next[k] = String(d[k] ?? '').trim(); });
+    if (next.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) { toast('البريد الإلكتروني غير صحيح', 'error'); return; }
+    const prev = aboutData();
+    next.developerLogo = ui.pendingDevLogo !== undefined && ui.pendingDevLogo !== null ? ui.pendingDevLogo : prev.developerLogo;
+    ui.pendingDevLogo = null;
+    db.about = next;
+    commit('تحديث صفحة «حول البرنامج والمطور»').then((r) => { if (r && r.ok) toast('تم حفظ صفحة «حول» — تظهر الآن لجميع المستخدمين'); });
+  }
+
+  /* =======================================================================
      23) إعدادات المطور
      ======================================================================= */
   const PRESETS = [
@@ -1826,7 +2003,7 @@
       </div>
       <div class="card section-gap">
         <div class="card-head"><h3>${icon('settings')} القيم الافتراضية في الكود</h3></div>
-        <p class="cell-sub" style="margin-bottom:10px">التغييرات هنا تُحفظ في هذا المتصفح فقط. لتثبيتها لجميع المستخدمين عدّل الملف <b class="num">js/config.js</b> في المستودع:</p>
+        <p class="cell-sub" style="margin-bottom:10px">التغييرات هنا تُحفظ في قاعدة البيانات وتظهر لجميع المستخدمين. أما القيم التي تُستعاد عند «استعادة الإعدادات الافتراضية» فموجودة في الملف <b class="num">js/config.js</b> في المستودع:</p>
         <div class="code-note" data-raw>const APP_CONFIG = {
   systemName: '${esc(s.systemNameAr)}',
   companyName: '${esc(s.companyName)}',
@@ -1840,7 +2017,8 @@
         <button type="submit" class="btn btn-primary">${icon('check')} حفظ الإعدادات</button>
         <button type="button" class="btn btn-ghost" data-action="settings-defaults">استعادة الإعدادات الافتراضية</button>
       </div>
-    </form>`;
+    </form>
+    ${aboutEditor()}`;
   }
 
   function saveSettings(form) {
@@ -2024,6 +2202,15 @@
       });
       applyTheme(p);
     },
+    'about-open': () => openAbout(),
+    'about-edit': () => { go('settings'); setTimeout(() => { const el = $('#aboutEditor'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
+    'about-updates': () => { if (window.desktop && window.desktop.checkUpdates) window.desktop.checkUpdates(); },
+    'dev-logo-remove': () => { ui.pendingDevLogo = ''; render(); setTimeout(() => { const el = $('#aboutEditor'); if (el) el.scrollIntoView({ block: 'start' }); }, 30); },
+    'about-defaults': () => confirmBox('استعادة نص صفحة «حول» الافتراضي؟ ستُحذف بيانات التواصل التي أضفتها.', () => {
+      db.about = {}; ui.pendingDevLogo = null;
+      commit('استعادة صفحة «حول» الافتراضية');
+      toast('تمت الاستعادة');
+    }, 'استعادة', false),
     'logo-reset': () => { ui.pendingLogo = APP_CONFIG.logo; $('#logoPreview').src = APP_CONFIG.logo; },
     'settings-defaults': () => confirmBox('استعادة اسم النظام والشعار والألوان والتنبيهات إلى القيم الموجودة في ملف config.js؟', () => {
       db.settings = {}; ui.pendingLogo = null; commit('استعادة الإعدادات الافتراضية'); toast('تمت الاستعادة');
@@ -2081,6 +2268,18 @@
       el.value = '';
     },
     'inv-month': (el) => { if (el.value) { ui.invMonth = el.value; render(); } },
+    'dev-logo-file': async (el) => {
+      const f = el.files && el.files[0];
+      if (!f) return;
+      try {
+        ui.pendingDevLogo = f.type === 'image/svg+xml' && f.size < 100000
+          ? await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(f); })
+          : await readImage(f, 256);
+        const prev = $('#devLogoPreview');
+        if (prev) prev.outerHTML = `<img class="logo-preview" id="devLogoPreview" src="${ui.pendingDevLogo}" alt="">`;
+        toast('اضغط «حفظ صفحة حول» لتطبيق الشعار', 'info');
+      } catch (e) { toast('تعذّرت قراءة الصورة', 'error'); }
+    },
     'logo-file': async (el) => {
       const f = el.files && el.files[0];
       if (!f) return;
@@ -2161,6 +2360,7 @@
     }
     if (f.dataset.form === 'field') { e.preventDefault(); submitField(f); }
     if (f.dataset.form === 'settings') { e.preventDefault(); saveSettings(f); }
+    if (f.dataset.form === 'about') { e.preventDefault(); saveAbout(f); }
     if (f.dataset.form === 'login') { e.preventDefault(); doLogin(f); }
     if (f.dataset.form === 'invoice') { e.preventDefault(); const d = formData(f); if (d.projectId) generateInvoice(d.projectId); }
   });
@@ -2209,6 +2409,9 @@
      ======================================================================= */
   (function init() {
     I18N.apply();
+    platformReady = loadPlatformInfo();
+    // ويندوز: قائمة «مساعدة ← حول» (أو F1) تفتح صفحة «حول» داخل التطبيق
+    if (window.desktop && window.desktop.onOpenAbout) window.desktop.onOpenAbout(() => { if (modalLocked) return; closeModal(); openAbout(); });
     // زر الرجوع في أندرويد: يغلق النافذة أو القائمة أولاً، ثم يعود للرئيسية، ثم يخرج من التطبيق
     if (NATIVE && NP.App) {
       NP.App.addListener('backButton', () => {

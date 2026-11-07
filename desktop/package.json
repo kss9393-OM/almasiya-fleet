@@ -23,10 +23,25 @@
     "appId": "om.almasiya.fleet",
     "productName": "Almasiya Fleet",
     "copyright": "© Services Square LLC — مربع الخدمات ش.م.م",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "www/**/*", "assets/**/*", "package.json"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "www/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico",
       "artifactName": "Almasiya-Fleet-Setup.${ext}",
       "executableName": "AlmasiyaFleet",
@@ -43,12 +58,18 @@
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "multiLanguageInstaller": true,
-      "installerLanguages": ["ar_SA", "en_US"],
+      "installerLanguages": [
+        "ar_SA",
+        "en_US"
+      ],
       "language": "1025",
       "deleteAppDataOnUninstall": false
     },
     "publish": [
-      { "provider": "generic", "url": "https://github.com/kss9393-OM/almasiya-fleet/releases/download/windows-latest" }
+      {
+        "provider": "generic",
+        "url": "https://github.com/kss9393-OM/almasiya-fleet/releases/download/windows-latest"
+      }
     ]
   }
 }
