@@ -1808,7 +1808,8 @@
       } else if (NATIVE && NP.App && NP.App.getInfo) {
         const i = await NP.App.getInfo();
         platform.version = i.version || platform.version;
-        platform.extra = `Build ${i.build || ''}`;
+        const os = (navigator.userAgent.match(/Android\s([\d.]+)/) || [])[1];
+        platform.extra = `${os ? 'Android ' + os + ' • ' : ''}Build ${i.build || ''}`;
       }
     } catch (e) { /* ignore */ }
     if (me && db && currentRoute() === 'about') render();
@@ -1861,7 +1862,10 @@
             <dt>المنصات المتاحة</dt><dd>الموقع • أندرويد • ويندوز</dd>
             <dt>البيانات</dt><dd>قاعدة بيانات مركزية متزامنة لحظياً</dd>
           </dl>
-          ${platform.kind === 'windows' ? `<button class="btn btn-ghost btn-sm" data-action="about-updates" style="margin-top:12px">${icon('refresh')} البحث عن تحديثات</button>` : ''}
+          ${platform.kind !== 'web' ? `<div class="about-actions">
+            <button class="btn btn-ghost btn-sm" data-action="about-updates">${icon('refresh')} البحث عن تحديثات</button>
+            ${platform.kind === 'android' ? `<button class="btn btn-ghost btn-sm" data-action="about-share">${icon('upload')} مشاركة التطبيق</button>` : ''}
+          </div>` : ''}
         </div>
         <div class="card">
           <div class="card-head"><h3>${icon('code')} عن المطور</h3></div>
@@ -1884,6 +1888,59 @@
     await platformReady.catch(() => {});
     if (me && db) { go('about'); return; }
     openModal({ title: 'حول البرنامج والمطور', size: 'lg', body: `<div class="about">${aboutBody(true)}</div>` });
+  }
+
+  /* ---------- تحديثات أندرويد ----------
+     يقرأ إصدارات GitHub (android-v*) ويختار الأعلى رقماً من المنشورة، ويقارنه بإصدار التطبيق المثبّت. */
+  const verParts = (v) => String(v || '').replace(/^[^\d]*/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  function isNewer(a, b) {
+    const x = verParts(a), y = verParts(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); }
+    return false;
+  }
+  const UPD_KEY = APP_CONFIG.storageKey + '_updcheck';
+  let updChecking = false;
+  async function androidCheckUpdate(manual) {
+    if (updChecking) return;
+    if (!manual) {
+      let last = 0;
+      try { last = Number(localStorage.getItem(UPD_KEY) || 0); } catch (e) { /* ignore */ }
+      if (Date.now() - last < (APP_CONFIG.updates.checkEveryHours || 6) * 3600000) return;
+    }
+    updChecking = true;
+    try {
+      await platformReady.catch(() => {});
+      const res = await fetch(`https://api.github.com/repos/${APP_CONFIG.updates.repo}/releases?per_page=20`, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const list = await res.json();
+      const rels = (Array.isArray(list) ? list : [])
+        .filter((r) => r && !r.draft && !r.prerelease && /^android-v/.test(r.tag_name || ''))
+        .map((r) => ({ v: r.tag_name.replace(/^android-v/, ''), r }))
+        .sort((a, b) => (isNewer(a.v, b.v) ? -1 : isNewer(b.v, a.v) ? 1 : 0));
+      try { localStorage.setItem(UPD_KEY, String(Date.now())); } catch (e) { /* ignore */ }
+      const best = rels[0];
+      if (!best) { if (manual) toast('تعذّر العثور على إصدارات التطبيق', 'warn'); return; }
+      if (!isNewer(best.v, platform.version)) {
+        if (manual) toast(`لديك أحدث إصدار (${platform.version})`, 'success');
+        return;
+      }
+      const asset = (best.r.assets || []).find((a) => /\.apk$/i.test(a.name));
+      const url = (asset && asset.browser_download_url) || APP_CONFIG.updates.apkUrl;
+      if (!manual && ($('#modal-root').innerHTML || modalLocked)) return;   // لا نقاطع نافذة مفتوحة
+      openModal({
+        title: 'تحديث جديد متاح',
+        body: `<div class="update-box">
+            <div class="update-ic">${icon('download')}</div>
+            <div>
+              <p class="confirm-msg">الإصدار <b class="num">${esc(best.v)}</b> متاح، والمثبّت لديك <b class="num">${esc(platform.version)}</b>.</p>
+              <p class="cell-sub" style="margin-top:6px">نزّل الملف ثم افتحه واضغط «تحديث». يُثبَّت فوق النسخة الحالية، وتبقى بياناتك وحسابك كما هي.</p>
+            </div>
+          </div>`,
+        footer: `<a class="btn btn-primary" href="${esc(url)}" rel="noopener" data-action="apk-download">${icon('download')} تنزيل التحديث</a>`,
+      });
+    } catch (e) {
+      if (manual) toast('تعذّر البحث عن تحديثات — تحقق من اتصال الإنترنت', 'error');
+    } finally { updChecking = false; }
   }
 
   /* محرر صفحة «حول» في إعدادات المطور */
@@ -2204,7 +2261,19 @@
     },
     'about-open': () => openAbout(),
     'about-edit': () => { go('settings'); setTimeout(() => { const el = $('#aboutEditor'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
-    'about-updates': () => { if (window.desktop && window.desktop.checkUpdates) window.desktop.checkUpdates(); },
+    'about-updates': () => {
+      if (window.desktop && window.desktop.checkUpdates) window.desktop.checkUpdates();
+      else if (NATIVE) androidCheckUpdate(true);
+    },
+    'about-share': async () => {
+      const url = APP_CONFIG.updates.apkUrl;
+      const text = I18N.lang === 'en' ? 'Fleet & Equipment Management – Android app' : 'تطبيق أسطول الماسية لأندرويد – نظام إدارة الأسطول والمعدات';
+      try {
+        if (NP.Share) await NP.Share.share({ title: text, text, url, dialogTitle: text });
+        else { await navigator.clipboard.writeText(url); toast('تم نسخ رابط التحميل', 'info'); }
+      } catch (e) { /* أُلغيت المشاركة */ }
+    },
+    'apk-download': () => { closeModal(); },
     'dev-logo-remove': () => { ui.pendingDevLogo = ''; render(); setTimeout(() => { const el = $('#aboutEditor'); if (el) el.scrollIntoView({ block: 'start' }); }, 30); },
     'about-defaults': () => confirmBox('استعادة نص صفحة «حول» الافتراضي؟ ستُحذف بيانات التواصل التي أضفتها.', () => {
       db.about = {}; ui.pendingDevLogo = null;
@@ -2338,7 +2407,7 @@
     const fn = ACTIONS[el.dataset.action];
     if (!fn) return;
     // لا نمنع السلوك الافتراضي للروابط ولا لخلفية النافذة (حتى تعمل أزرار الإرسال داخلها)
-    if (el.dataset.action !== 'nav' && el.dataset.action !== 'modal-bg') e.preventDefault();
+    if (!['nav', 'modal-bg', 'apk-download'].includes(el.dataset.action)) e.preventDefault();
     fn(el.dataset, el, e);
   });
   document.addEventListener('change', (e) => {
@@ -2410,6 +2479,8 @@
   (function init() {
     I18N.apply();
     platformReady = loadPlatformInfo();
+    // أندرويد: فحص تلقائي للتحديثات (لا يتحدث التطبيق وحده كما في ويندوز)
+    if (NATIVE) platformReady.then(() => setTimeout(() => androidCheckUpdate(false), 4000));
     // ويندوز: قائمة «مساعدة ← حول» (أو F1) تفتح صفحة «حول» داخل التطبيق
     if (window.desktop && window.desktop.onOpenAbout) window.desktop.onOpenAbout(() => { if (modalLocked) return; closeModal(); openAbout(); });
     // زر الرجوع في أندرويد: يغلق النافذة أو القائمة أولاً، ثم يعود للرئيسية، ثم يخرج من التطبيق

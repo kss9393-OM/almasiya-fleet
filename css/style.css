@@ -272,6 +272,7 @@ select.status-select {
   transition: background .15s, border-color .15s, opacity .15s;
 }
 .btn .ic { width: 16px; height: 16px; }
+a.btn { text-decoration: none; }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-strong); }
 .btn-accent { background: var(--accent); color: #1a1300; }
@@ -625,6 +626,10 @@ a.contact:hover { border-color: var(--primary); background: var(--primary-soft);
 .about-empty { font-size: 13px; }
 .about-copy { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 18px; line-height: 1.8; }
 .about-copy span { font-size: 11.5px; }
+.about-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.update-box { display: flex; gap: 14px; align-items: flex-start; }
+.update-ic { width: 48px; height: 48px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.update-ic .ic { width: 24px; height: 24px; }
 .login-about { display: inline-flex; align-items: center; justify-content: center; gap: 6px; align-self: center; }
 .login-about .ic { width: 15px; height: 15px; }
 .modal .about-hero { margin: -2px 0 14px; }

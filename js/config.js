@@ -75,6 +75,14 @@ const APP_CONFIG = {
     addressEn: '',
   },
 
+  // ---------- تحديثات تطبيق أندرويد ----------
+  // يفحص التطبيق إصدارات GitHub (الوسوم android-v*) ويعرض تنزيل النسخة الأحدث
+  updates: {
+    repo: 'kss9393-OM/almasiya-fleet',
+    apkUrl: 'https://github.com/kss9393-OM/almasiya-fleet/releases/latest/download/almasiya-fleet.apk',
+    checkEveryHours: 6,
+  },
+
   // ---------- اللغة ----------
   defaultLanguage: 'ar',   // 'ar' أو 'en' — اللغة عند أول زيارة، ويمكن للمستخدم تبديلها من الزر
 
