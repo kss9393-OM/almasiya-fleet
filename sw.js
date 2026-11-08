@@ -4,7 +4,7 @@
    الاستراتيجية: عرض النسخة المحفوظة فوراً ثم تحديثها في الخلفية،
    فتظهر التحديثات الجديدة عند الفتح التالي.
    ========================================================================= */
-const CACHE = 'almasiya-fleet-v7';
+const CACHE = 'almasiya-fleet-v8';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/fonts.css', './css/style.css', './css/mobile.css',

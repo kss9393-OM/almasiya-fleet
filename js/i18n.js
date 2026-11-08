@@ -428,7 +428,11 @@ const I18N = (function () {
     'لوحة المفاتيح على اللغة العربية — بدّلها إلى الإنجليزية ثم أعد كتابة اسم المستخدم وكلمة المرور': 'Your keyboard is set to Arabic — switch it to English and retype your username and password',
     'المزيد': 'More', 'مركبتي': 'My vehicle', 'الساعات': 'Hours', 'الصيانة': 'Maintenance', 'الميدان': 'Field', 'المهام': 'Tasks', 'الأسطول': 'Fleet',
     'التنقل السريع': 'Quick navigation', 'القائمة الرئيسية': 'Main menu', 'تعذّر حفظ الملف': 'Could not save the file',
-    'الهوية البصرية': 'Branding', 'إضافة إلى الأسطول': 'Add to fleet', 'إضافة مركبة / معدة جديدة': 'Add new vehicle / equipment',
+    'الهوية البصرية': 'Branding', 'الحقوق ورقم الإصدار': 'Copyright & version', 'رقم إصدار البرنامج': 'Software version',
+    'صاحب الحقوق (عربي)': 'Copyright holder (Arabic)', 'صاحب الحقوق (إنجليزي)': 'Copyright holder (English)',
+    'نص حماية الحقوق (عربي)': 'Rights notice (Arabic)', 'نص حماية الحقوق (إنجليزي)': 'Rights notice (English)',
+    'رقم البناء المثبّت': 'Installed build',
+    'تظهر فوراً لجميع المستخدمين في الموقع وتطبيقي أندرويد وويندوز، وفي شاشة الدخول وصفحة «حول».': 'Shown instantly to all users on the website and the Android and Windows apps, on the sign-in screen and the About page.', 'إضافة إلى الأسطول': 'Add to fleet', 'إضافة مركبة / معدة جديدة': 'Add new vehicle / equipment',
     'لوحة تحكم مركزية لمتابعة حالة الشاحنات والمعدات، التراخيص والتأمين، الصيانة، عقود التشغيل والإيجار، والمهام اليومية.': 'A central dashboard to track trucks and equipment, licences and insurance, maintenance, operating and rental contracts, and daily tasks.',
   };
 

@@ -135,9 +135,29 @@
   const countStatus = (list) => STATUS_ORDER.reduce((o, s) => { o[s] = list.filter((v) => v.status === s).length; return o; }, {});
 
   /* ---------- الإعدادات والهوية ---------- */
+  /* الهوية المنشورة (اسم الشركة، الحقوق، رقم الإصدار…) تُقرأ من قاعدة البيانات حتى قبل تسجيل الدخول،
+     وتُحفظ محلياً لتظهر فوراً عند الفتح التالي ودون اتصال، وتتحدث لحظياً عند تعديل المطور */
+  const BRAND_CACHE = APP_CONFIG.storageKey + '_brand';
+  let brand = (() => { try { return JSON.parse(localStorage.getItem(BRAND_CACHE) || '{}') || {}; } catch (e) { return {}; } })();
+  let brandJson = '';
+  function cacheBrand(settings) {
+    brand = settings || {};
+    const j = JSON.stringify(brand);
+    if (j === brandJson) return;
+    brandJson = j;
+    try { localStorage.setItem(BRAND_CACHE, j); } catch (e) { /* ignore */ }
+  }
+  const RIGHTS_NOTICE_AR = 'يُمنع نسخ البرنامج أو إعادة توزيعه أو استخدامه تجارياً دون إذن كتابي من المالك.';
+  const RIGHTS_NOTICE_EN = 'Copying, redistributing or commercial use of this software without written permission from the owner is prohibited.';
+
   function S() {
-    const s = (db && db.settings) || {};
+    const s = (db ? db.settings : brand) || {};
     return {
+      version: s.appVersion || APP_CONFIG.version,
+      copyrightHolder: s.copyrightHolder || APP_CONFIG.copyrightHolder,
+      copyrightHolderEn: s.copyrightHolderEn || (s.copyrightHolder ? '' : APP_CONFIG.copyrightHolderEn || ''),
+      rightsNoticeAr: s.rightsNoticeAr ?? RIGHTS_NOTICE_AR,
+      rightsNoticeEn: s.rightsNoticeEn ?? RIGHTS_NOTICE_EN,
       systemName: I18N.lang === 'en' ? (s.systemNameEn || APP_CONFIG.systemNameEn || s.systemName || APP_CONFIG.systemName) : (s.systemName || APP_CONFIG.systemName),
       systemNameAr: s.systemName || APP_CONFIG.systemName,
       systemNameEn: s.systemNameEn || APP_CONFIG.systemNameEn || '',
@@ -163,8 +183,10 @@
     $('#brandCompany').textContent = I18N.lang === 'en' && s.companyNameEn ? s.companyNameEn : s.companyName;
     $('#brandLogo').src = s.logo;
     $('#favicon').href = s.logo;
-    $('#appVersion').textContent = `الإصدار ${APP_CONFIG.version}`;
+    $('#appVersion').textContent = `الإصدار ${s.version}`;
     $('#copyrightLine').textContent = copyrightText();
+    const metaC = document.querySelector('meta[name=copyright]');
+    if (metaC) metaC.content = `© ${s.copyrightHolder} – جميع الحقوق محفوظة`;
     $('#langBtn').innerHTML = langBtnLabel();
     const meta = document.querySelector('meta[name=theme-color]');
     if (meta) meta.content = s.theme.sidebar;
@@ -465,6 +487,7 @@
   function render() {
     applyBranding();
     if (db && db.about) cacheAbout(db.about);
+    if (db) cacheBrand(db.settings);
     if (!me || !db) { setBars('DARK'); showLogin(); return; }
     setBars('LIGHT');
     $('#login-screen').classList.add('hidden');
@@ -491,20 +514,7 @@
     el.classList.remove('hidden');
     setTimeout(() => { const f = $(ui.loginUser ? '#login-screen input[name=password]' : '#login-screen input[name=username]'); if (f) f.focus(); }, 30);
     el.innerHTML = `
-      <section class="login-side">
-        <div class="brand-big"><img src="${esc(s.logo)}" alt="الشعار"><div><strong style="font-size:18px">${esc(I18N.lang === 'en' ? s.companyNameEn || s.companyName : s.companyName)}</strong>${I18N.lang === 'en' ? '' : `<div style="color:rgba(255,255,255,.65);font-size:13px">${esc(s.companyNameEn)}</div>`}</div></div>
-        <div>
-          <h1>${esc(s.systemName)}</h1>
-          <p>لوحة تحكم مركزية لمتابعة حالة الشاحنات والمعدات، التراخيص والتأمين، الصيانة، عقود التشغيل والإيجار، والمهام اليومية.</p>
-          <ul>
-            <li><i class="dot" style="background:var(--st-active)"></i>في العمل – مرتبطة بمشروع أو عقد إيجار</li>
-            <li><i class="dot" style="background:var(--st-idle)"></i>شاغرة / جاهزة للتشغيل</li>
-            <li><i class="dot" style="background:var(--st-maintenance)"></i>في الصيانة الدورية أو الإصلاح</li>
-            <li><i class="dot" style="background:var(--st-breakdown)"></i>خارج الخدمة / معطلة</li>
-          </ul>
-        </div>
-        <small style="color:rgba(255,255,255,.5);position:relative;z-index:1">${esc(s.companyName)}</small>
-      </section>
+      ${loginSide(s)}
       <section class="login-main">
         <form class="login-card" data-form="login" autocomplete="on" novalidate>
           <h2>تسجيل الدخول</h2>
@@ -521,9 +531,35 @@
           <p class="muted login-help">نسيت كلمة المرور؟ تواصل مع مدير النظام لإعادة تعيينها.</p>
           <button type="button" class="btn-link login-about" data-action="about-open">${icon('info')} حول البرنامج والمطور</button>
         </form>
-        <footer class="login-copy">${esc(copyrightText())}</footer>
+        <footer class="login-copy" id="loginCopy">${loginCopy()}</footer>
         <button type="button" class="lang-btn login-lang" data-action="lang-toggle">${langBtnLabel()}</button>
       </section>`;
+  }
+
+  function loginSide(s) {
+    return `
+      <section class="login-side" id="loginSide">
+        <div class="brand-big"><img src="${esc(s.logo)}" alt="الشعار"><div><strong style="font-size:18px">${esc(I18N.lang === 'en' ? s.companyNameEn || s.companyName : s.companyName)}</strong>${I18N.lang === 'en' ? '' : `<div style="color:rgba(255,255,255,.65);font-size:13px">${esc(s.companyNameEn)}</div>`}</div></div>
+        <div>
+          <h1>${esc(s.systemName)}</h1>
+          <p>لوحة تحكم مركزية لمتابعة حالة الشاحنات والمعدات، التراخيص والتأمين، الصيانة، عقود التشغيل والإيجار، والمهام اليومية.</p>
+          <ul>
+            <li><i class="dot" style="background:var(--st-active)"></i>في العمل – مرتبطة بمشروع أو عقد إيجار</li>
+            <li><i class="dot" style="background:var(--st-idle)"></i>شاغرة / جاهزة للتشغيل</li>
+            <li><i class="dot" style="background:var(--st-maintenance)"></i>في الصيانة الدورية أو الإصلاح</li>
+            <li><i class="dot" style="background:var(--st-breakdown)"></i>خارج الخدمة / معطلة</li>
+          </ul>
+        </div>
+        <small style="color:rgba(255,255,255,.5);position:relative;z-index:1">${esc(s.companyName)}</small>
+      </section>`;
+  }
+  const loginCopy = () => `<span data-raw>${esc(copyrightText())}</span><span class="login-ver">الإصدار <b class="num">${esc(S().version)}</b></span>`;
+  /** تحديث الهوية في شاشة الدخول دون المساس بما كتبه المستخدم في الحقول */
+  function refreshLoginBrand() {
+    const side = $('#loginSide');
+    if (side) side.outerHTML = loginSide(S());
+    const c = $('#loginCopy');
+    if (c) c.innerHTML = loginCopy();
   }
 
   /* ---------- منصة أندرويد (Capacitor) ---------- */
@@ -576,9 +612,10 @@
   /* ---------- اللغة والحقوق ---------- */
   function copyrightText() {
     const y = new Date().getFullYear();
+    const s = S();
     return I18N.lang === 'en'
-      ? `© ${y} All rights reserved — ${APP_CONFIG.copyrightHolderEn || APP_CONFIG.copyrightHolder}`
-      : `© ${y} جميع الحقوق محفوظة لـ ${APP_CONFIG.copyrightHolder}`;
+      ? `© ${y} All rights reserved — ${s.copyrightHolderEn || s.copyrightHolder}`
+      : `© ${y} جميع الحقوق محفوظة لـ ${s.copyrightHolder}`;
   }
   const langBtnLabel = () => `${icon('globe')}<span>${I18N.lang === 'en' ? 'عربي' : 'English'}</span>`;
 
@@ -1846,7 +1883,7 @@
           <p>${esc(I18N.lang === 'en' && s.companyNameEn ? s.companyNameEn : s.companyName)}</p>
           <div class="about-tags">
             <span class="badge b-primary">${icon(PLATFORM_ICON[platform.kind])} ${PLATFORM_LABEL[platform.kind]}</span>
-            <span class="badge b-accent">الإصدار <b class="num">${esc(platform.version)}</b></span>
+            <span class="badge b-accent">الإصدار <b class="num">${esc(s.version)}</b></span>
           </div>
         </div>
         ${!inModal && isDev ? `<button class="btn btn-ghost btn-sm about-edit" data-action="about-edit">${icon('edit')} تعديل هذه الصفحة</button>` : ''}
@@ -1857,7 +1894,8 @@
           ${aboutText(a, 'description') ? `<p class="about-desc" data-raw>${esc(aboutText(a, 'description'))}</p>` : ''}
           ${features.length ? `<h4 class="about-sub">المزايا</h4><ul class="about-features" data-raw>${features.map((f) => `<li>${icon('check')}<span>${esc(f)}</span></li>`).join('')}</ul>` : ''}
           <dl class="kv about-kv">
-            <dt>الإصدار</dt><dd class="num">${esc(platform.version)}</dd>
+            <dt>الإصدار</dt><dd class="num">${esc(s.version)}</dd>
+            ${platform.kind !== 'web' ? `<dt>رقم البناء المثبّت</dt><dd class="num">${esc(platform.version)}</dd>` : ''}
             <dt>المنصة</dt><dd>${PLATFORM_LABEL[platform.kind]}${platform.extra ? `<div class="cell-sub num" data-raw><bdi>${esc(platform.extra)}</bdi></div>` : ''}</dd>
             <dt>المنصات المتاحة</dt><dd>الموقع • أندرويد • ويندوز</dd>
             <dt>البيانات</dt><dd>قاعدة بيانات مركزية متزامنة لحظياً</dd>
@@ -1877,7 +1915,7 @@
             : `<p class="muted about-empty">${isDev ? 'لم تُضف بيانات التواصل بعد — أضفها من «تعديل هذه الصفحة».' : 'للدعم الفني تواصل مع مدير النظام.'}</p>`}
         </div>
       </div>
-      <p class="about-copy">© ${year} ${I18N.lang === 'en' ? `All rights reserved — ${esc(APP_CONFIG.copyrightHolderEn || APP_CONFIG.copyrightHolder)}` : `جميع الحقوق محفوظة لـ ${esc(APP_CONFIG.copyrightHolder)}`}<br><span>يُمنع نسخ البرنامج أو إعادة توزيعه أو استخدامه تجارياً دون إذن كتابي من المالك.</span></p>`;
+      <p class="about-copy"><span data-raw>${esc(copyrightText())}</span>${(I18N.lang === 'en' ? s.rightsNoticeEn || s.rightsNoticeAr : s.rightsNoticeAr || s.rightsNoticeEn) ? `<br><span data-raw>${esc(I18N.lang === 'en' ? s.rightsNoticeEn || s.rightsNoticeAr : s.rightsNoticeAr || s.rightsNoticeEn)}</span>` : ''}</p>`;
   }
 
   function viewAbout() { return `<div class="about">${aboutBody(false)}</div>`; }
@@ -2040,6 +2078,17 @@
         </div>
         <div class="stack">
           <div class="card">
+            <div class="card-head"><h3>${icon('shield')} الحقوق ورقم الإصدار</h3></div>
+            <p class="cell-sub" style="margin-bottom:10px">تظهر فوراً لجميع المستخدمين في الموقع وتطبيقي أندرويد وويندوز، وفي شاشة الدخول وصفحة «حول».</p>
+            <div class="form-grid two">
+              ${field('رقم إصدار البرنامج', `<input name="appVersion" value="${esc(s.version)}" dir="ltr" maxlength="20" placeholder="2.0.0" required>`, 'full')}
+              ${field('صاحب الحقوق (عربي)', `<input name="copyrightHolder" value="${esc(s.copyrightHolder)}" required>`)}
+              ${field('صاحب الحقوق (إنجليزي)', `<input name="copyrightHolderEn" value="${esc(s.copyrightHolderEn)}" dir="ltr">`)}
+              ${field('نص حماية الحقوق (عربي)', `<textarea name="rightsNoticeAr" rows="2">${esc(s.rightsNoticeAr)}</textarea>`)}
+              ${field('نص حماية الحقوق (إنجليزي)', `<textarea name="rightsNoticeEn" rows="2" dir="ltr">${esc(s.rightsNoticeEn)}</textarea>`)}
+            </div>
+          </div>
+          <div class="card">
             <div class="card-head"><h3>${icon('bell')} إعدادات التنبيهات</h3></div>
             <div class="form-grid two">
               ${field('التنبيه قبل انتهاء الرخصة/التأمين (يوم)', `<input name="alertDays" type="number" min="1" max="180" value="${s.alertDays}">`, 'full')}
@@ -2064,6 +2113,8 @@
         <div class="code-note" data-raw>const APP_CONFIG = {
   systemName: '${esc(s.systemNameAr)}',
   companyName: '${esc(s.companyName)}',
+  copyrightHolder: '${esc(s.copyrightHolder)}',
+  version: '${esc(s.version)}',
   logo: 'assets/logo.svg',
   theme: { primary: '${esc(s.theme.primary)}', accent: '${esc(s.theme.accent)}', sidebar: '${esc(s.theme.sidebar)}' },
   alertDays: ${s.alertDays},
@@ -2082,6 +2133,11 @@
     const d = formData(form);
     db.settings = Object.assign({}, db.settings, {
       systemName: d.systemName, systemNameEn: d.systemNameEn, companyName: d.companyName, companyNameEn: d.companyNameEn,
+      appVersion: String(d.appVersion || '').trim() || APP_CONFIG.version,
+      copyrightHolder: String(d.copyrightHolder || '').trim() || APP_CONFIG.copyrightHolder,
+      copyrightHolderEn: String(d.copyrightHolderEn || '').trim(),
+      rightsNoticeAr: String(d.rightsNoticeAr || '').trim(),
+      rightsNoticeEn: String(d.rightsNoticeEn || '').trim(),
       theme: { primary: d.primary, accent: d.accent, sidebar: d.sidebar },
       alertDays: Number(d.alertDays) || APP_CONFIG.alertDays,
       maintenanceThreshold: { hours: Number(d.thHours) || 0, km: Number(d.thKm) || 0 },
@@ -2499,6 +2555,15 @@
     if (!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
+    // الهوية المنشورة: قراءة فورية ثم متابعة لحظية لتعديلات المطور (حتى قبل تسجيل الدخول)
+    Store.watchBrand((id, data) => {
+      if (id === 'about') cacheAbout(data); else cacheBrand(data);
+      if (me && db) return;   // بعد الدخول تصل التعديلات عبر المزامنة الكاملة وتُعرض تلقائياً
+      applyBranding();
+      refreshLoginBrand();
+      const m = $('#modal-root .about');
+      if (m) m.innerHTML = aboutBody(true);
+    });
     // جلسة محفوظة؟ تحميل البيانات مباشرة دون إعادة تسجيل الدخول
     render();
     Store.getSession().then(async (session) => {

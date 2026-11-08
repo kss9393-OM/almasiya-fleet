@@ -324,6 +324,27 @@ const Store = (function () {
     });
   }
 
+  /* الهوية المنشورة (settings / about): متاحة للقراءة قبل تسجيل الدخول، مع متابعة لحظية */
+  let brandChannel = null;
+  async function watchBrand(cb) {
+    const ids = ['settings', 'about'];
+    const pull = async () => {
+      try {
+        const { data, error } = await client.from('app_settings').select('id,data').in('id', ids);
+        if (!error && data) data.forEach((r) => cb(r.id, r.data || {}));
+      } catch (e) { /* دون اتصال: تبقى النسخة المحفوظة */ }
+    };
+    await pull();
+    if (brandChannel) return;
+    brandChannel = client.channel('brand-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (p) => {
+        const r = p.new;
+        if (r && ids.includes(r.id)) cb(r.id, r.data || {});
+      })
+      .subscribe();
+    window.addEventListener('online', pull);
+  }
+
   // عودة الاتصال: إرسال المعلّق ثم تحديث البيانات
   window.addEventListener('online', async () => {
     if (!db) return;
@@ -373,7 +394,7 @@ const Store = (function () {
   return {
     client, fmtDate, normalizeCred, canon,
     signIn, signOut, getSession, verifyPassword, changeOwnPassword, touchLogin,
-    load, loadAll, save, subscribe, on, pendingCount,
+    load, loadAll, save, subscribe, on, pendingCount, watchBrand,
     get status() { return status; },
     adminUsers, updateProfile,
     uploadPhoto, photoUrls, cachedPhotoUrl,
