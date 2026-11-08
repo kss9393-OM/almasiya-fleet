@@ -6,7 +6,7 @@ name: Windows App
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'LICENSE', 'mobile/**', '.github/workflows/android.yml']
+    paths-ignore: ['**.md', 'LICENSE', 'mobile/**', '.github/workflows/android.yml', '.github/workflows/ios.yml']
   workflow_dispatch:
 
 permissions:

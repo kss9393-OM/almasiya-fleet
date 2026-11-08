@@ -562,10 +562,12 @@
     if (c) c.innerHTML = loginCopy();
   }
 
-  /* ---------- منصة أندرويد (Capacitor) ---------- */
+  /* ---------- تطبيقا أندرويد وآيفون (Capacitor) ---------- */
   const NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
   const NP = NATIVE ? (window.Capacitor.Plugins || {}) : {};
-  if (NATIVE) document.documentElement.classList.add('native');
+  const IOS = NATIVE && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios';
+  const ANDROID = NATIVE && !IOS;
+  if (NATIVE) document.documentElement.classList.add('native', IOS ? 'ios' : 'android');
   let barStyle = '';
   function setBars(style) {
     if (!NATIVE || !NP.SystemBars || barStyle === style) return;
@@ -1835,7 +1837,7 @@
   const aboutText = (a, key) => (I18N.lang === 'en' ? (a[key + 'En'] || a[key + 'Ar']) : (a[key + 'Ar'] || a[key + 'En'])) || '';
 
   /* معلومات المنصة والإصدار (ويندوز من التطبيق نفسه، أندرويد من Capacitor) */
-  const platform = { kind: window.desktop ? 'windows' : NATIVE ? 'android' : 'web', version: APP_CONFIG.version, extra: '' };
+  const platform = { kind: window.desktop ? 'windows' : IOS ? 'ios' : NATIVE ? 'android' : 'web', version: APP_CONFIG.version, extra: '' };
   async function loadPlatformInfo() {
     try {
       if (window.desktop && window.desktop.getInfo) {
@@ -1845,14 +1847,16 @@
       } else if (NATIVE && NP.App && NP.App.getInfo) {
         const i = await NP.App.getInfo();
         platform.version = i.version || platform.version;
-        const os = (navigator.userAgent.match(/Android\s([\d.]+)/) || [])[1];
-        platform.extra = `${os ? 'Android ' + os + ' • ' : ''}Build ${i.build || ''}`;
+        let os = '';
+        if (IOS) { const m = navigator.userAgent.match(/OS (\d+)[_.](\d+)(?:[_.](\d+))?/); if (m) os = 'iOS ' + [m[1], m[2], m[3]].filter(Boolean).join('.'); }
+        else { const m = navigator.userAgent.match(/Android\s([\d.]+)/); if (m) os = 'Android ' + m[1]; }
+        platform.extra = `${os ? os + ' • ' : ''}Build ${i.build || ''}`;
       }
     } catch (e) { /* ignore */ }
     if (me && db && currentRoute() === 'about') render();
   }
-  const PLATFORM_LABEL = { windows: 'تطبيق ويندوز', android: 'تطبيق أندرويد', web: 'الموقع (المتصفح)' };
-  const PLATFORM_ICON = { windows: 'monitor', android: 'phone', web: 'globe' };
+  const PLATFORM_LABEL = { windows: 'تطبيق ويندوز', android: 'تطبيق أندرويد', ios: 'تطبيق آيفون', web: 'الموقع (المتصفح)' };
+  const PLATFORM_ICON = { windows: 'monitor', android: 'phone', ios: 'phone', web: 'globe' };
 
   const safeUrl = (u) => { const v = String(u || '').trim(); if (!v) return ''; return /^https?:\/\//i.test(v) ? v : 'https://' + v; };
   const telUrl = (n) => 'tel:' + String(n || '').replace(/[^\d+]/g, '');
@@ -1897,10 +1901,10 @@
             <dt>الإصدار</dt><dd class="num">${esc(s.version)}</dd>
             ${platform.kind !== 'web' ? `<dt>رقم البناء المثبّت</dt><dd class="num">${esc(platform.version)}</dd>` : ''}
             <dt>المنصة</dt><dd>${PLATFORM_LABEL[platform.kind]}${platform.extra ? `<div class="cell-sub num" data-raw><bdi>${esc(platform.extra)}</bdi></div>` : ''}</dd>
-            <dt>المنصات المتاحة</dt><dd>الموقع • أندرويد • ويندوز</dd>
+            <dt>المنصات المتاحة</dt><dd>الموقع • أندرويد • آيفون • ويندوز</dd>
             <dt>البيانات</dt><dd>قاعدة بيانات مركزية متزامنة لحظياً</dd>
           </dl>
-          ${platform.kind !== 'web' ? `<div class="about-actions">
+          ${platform.kind === 'android' || platform.kind === 'windows' ? `<div class="about-actions">
             <button class="btn btn-ghost btn-sm" data-action="about-updates">${icon('refresh')} البحث عن تحديثات</button>
             ${platform.kind === 'android' ? `<button class="btn btn-ghost btn-sm" data-action="about-share">${icon('upload')} مشاركة التطبيق</button>` : ''}
           </div>` : ''}
@@ -1989,7 +1993,7 @@
     const inp = (name, label, ltr = false, type = 'text', ph = '') => field(label, `<input name="${name}" type="${type}" value="${esc(a[name])}" ${ltr ? 'dir="ltr"' : ''} ${ph ? `placeholder="${esc(ph)}"` : ''}>`);
     return `<form class="card section-gap" data-form="about" id="aboutEditor">
       <div class="card-head"><h3>${icon('info')} صفحة «حول البرنامج والمطور»</h3><button type="button" class="btn-link" data-action="goto" data-route="about">${icon('eye')} معاينة</button></div>
-      <p class="cell-sub" style="margin-bottom:12px">يظهر هذا المحتوى لجميع المستخدمين في الموقع وتطبيقي أندرويد وويندوز (قائمة مساعدة ← حول، أو F1). الحقول الفارغة لا تُعرض.</p>
+      <p class="cell-sub" style="margin-bottom:12px">يظهر هذا المحتوى لجميع المستخدمين في الموقع وتطبيقات أندرويد وآيفون وويندوز (قائمة مساعدة ← حول، أو F1). الحقول الفارغة لا تُعرض.</p>
       <div class="form-grid two">
         <h4 class="form-sec">عن البرنامج</h4>
         ${ta('descriptionAr', 'وصف البرنامج (عربي)', 4)}
@@ -2079,7 +2083,7 @@
         <div class="stack">
           <div class="card">
             <div class="card-head"><h3>${icon('shield')} الحقوق ورقم الإصدار</h3></div>
-            <p class="cell-sub" style="margin-bottom:10px">تظهر فوراً لجميع المستخدمين في الموقع وتطبيقي أندرويد وويندوز، وفي شاشة الدخول وصفحة «حول».</p>
+            <p class="cell-sub" style="margin-bottom:10px">تظهر فوراً لجميع المستخدمين في الموقع وتطبيقات أندرويد وآيفون وويندوز، وفي شاشة الدخول وصفحة «حول».</p>
             <div class="form-grid two">
               ${field('رقم إصدار البرنامج', `<input name="appVersion" value="${esc(s.version)}" dir="ltr" maxlength="20" placeholder="2.0.0" required>`, 'full')}
               ${field('صاحب الحقوق (عربي)', `<input name="copyrightHolder" value="${esc(s.copyrightHolder)}" required>`)}
@@ -2098,7 +2102,7 @@
           </div>
           <div class="card">
             <div class="card-head"><h3>${icon('database')} قاعدة البيانات والنسخ الاحتياطي</h3></div>
-            <div class="notice" style="margin-bottom:12px">${icon('database')}<span>البيانات محفوظة في قاعدة بيانات مركزية (Supabase) ومتزامنة لحظياً بين الموقع وتطبيق أندرويد وجميع الأجهزة. تُؤخذ نسخ احتياطية من الخادم، ويمكنك أيضاً تصدير نسخة بنفسك.</span></div>
+            <div class="notice" style="margin-bottom:12px">${icon('database')}<span>البيانات محفوظة في قاعدة بيانات مركزية (Supabase) ومتزامنة لحظياً بين الموقع وتطبيقات أندرويد وآيفون وويندوز وجميع الأجهزة. تُؤخذ نسخ احتياطية من الخادم، ويمكنك أيضاً تصدير نسخة بنفسك.</span></div>
             <div class="cell-sub" style="margin-bottom:12px">${db.vehicles.length} معدة • ${db.users.length} مستخدم • ${db.timesheets.length} سجل ساعات • ${db.tasks.length} مهمة • ${db.reports.length} بلاغ • ${db.invoices.length} فاتورة</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="button" class="btn btn-ghost" data-action="backup-export">${icon('download')} تصدير نسخة احتياطية</button>
@@ -2319,7 +2323,7 @@
     'about-edit': () => { go('settings'); setTimeout(() => { const el = $('#aboutEditor'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
     'about-updates': () => {
       if (window.desktop && window.desktop.checkUpdates) window.desktop.checkUpdates();
-      else if (NATIVE) androidCheckUpdate(true);
+      else if (ANDROID) androidCheckUpdate(true);
     },
     'about-share': async () => {
       const url = APP_CONFIG.updates.apkUrl;
@@ -2536,11 +2540,11 @@
     I18N.apply();
     platformReady = loadPlatformInfo();
     // أندرويد: فحص تلقائي للتحديثات (لا يتحدث التطبيق وحده كما في ويندوز)
-    if (NATIVE) platformReady.then(() => setTimeout(() => androidCheckUpdate(false), 4000));
+    if (ANDROID) platformReady.then(() => setTimeout(() => androidCheckUpdate(false), 4000));
     // ويندوز: قائمة «مساعدة ← حول» (أو F1) تفتح صفحة «حول» داخل التطبيق
     if (window.desktop && window.desktop.onOpenAbout) window.desktop.onOpenAbout(() => { if (modalLocked) return; closeModal(); openAbout(); });
     // زر الرجوع في أندرويد: يغلق النافذة أو القائمة أولاً، ثم يعود للرئيسية، ثم يخرج من التطبيق
-    if (NATIVE && NP.App) {
+    if (ANDROID && NP.App) {
       NP.App.addListener('backButton', () => {
         if ($('#modal-root').innerHTML) { if (!modalLocked) closeModal(); return; }
         if ($('#sidebar').classList.contains('open')) { closeSidebar(); return; }

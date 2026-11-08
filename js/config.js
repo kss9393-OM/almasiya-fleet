@@ -58,8 +58,8 @@ const APP_CONFIG = {
   // ---------- صفحة «حول البرنامج والمطور» (القيم الافتراضية) ----------
   // يعدّلها المطور من داخل التطبيق: إعدادات المطور ← صفحة «حول»، وتُحفظ في قاعدة البيانات لجميع المستخدمين.
   about: {
-    descriptionAr: 'نظام متكامل لإدارة أسطول الشاحنات والمعدات الثقيلة: متابعة الحالة التشغيلية، التراخيص والتأمين، الصيانة الدورية، عقود التشغيل والإيجار، ساعات التشغيل، البلاغات الميدانية والفواتير — متزامن لحظياً بين الموقع وتطبيقي أندرويد وويندوز.',
-    descriptionEn: 'An integrated system for managing trucks and heavy equipment: operating status, licences and insurance, preventive maintenance, operating and rental contracts, timesheets, field reports and invoicing — synced in real time across the website and the Android and Windows apps.',
+    descriptionAr: 'نظام متكامل لإدارة أسطول الشاحنات والمعدات الثقيلة: متابعة الحالة التشغيلية، التراخيص والتأمين، الصيانة الدورية، عقود التشغيل والإيجار، ساعات التشغيل، البلاغات الميدانية والفواتير — متزامن لحظياً بين الموقع وتطبيقات أندرويد وآيفون وويندوز.',
+    descriptionEn: 'An integrated system for managing trucks and heavy equipment: operating status, licences and insurance, preventive maintenance, operating and rental contracts, timesheets, field reports and invoicing — synced in real time across the website and the Android, iPhone and Windows apps.',
     featuresAr: 'مزامنة لحظية بين جميع الأجهزة\nصلاحيات حسب الدور: المطور، مدير النظام، المشرف، السائق، فريق الصيانة\nتنبيهات تلقائية للرخص والتأمين والصيانة الدورية\nتأجير ساعي ويومي وشهري، مع سائق أو بدون سائق\nبلاغات أعطال بالصور تتحول تلقائياً إلى مهام صيانة\nفواتير إيجار وتقارير تشغيل شهرية\nواجهة عربية وإنجليزية، وتعمل دون اتصال',
     featuresEn: 'Real-time sync across all devices\nRole-based permissions: developer, system manager, supervisor, driver, maintenance team\nAutomatic alerts for licences, insurance and preventive maintenance\nHourly, daily and monthly rentals, with or without a driver\nPhoto breakdown reports that become maintenance tasks automatically\nRental invoices and monthly operating reports\nArabic and English interface, works offline',
     developerNameAr: 'مربع الخدمات ش.م.م',

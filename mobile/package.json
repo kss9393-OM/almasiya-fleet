@@ -1,18 +1,20 @@
 {
-  "name": "almasiya-fleet-android",
+  "name": "almasiya-fleet-mobile",
   "version": "1.1.0",
   "private": true,
-  "description": "تطبيق أندرويد لنظام إدارة الأسطول والمعدات – © مربع الخدمات ش.م.م (Services Square LLC)",
+  "description": "تطبيقا أندرويد وآيفون لنظام إدارة الأسطول والمعدات – © مربع الخدمات ش.م.م (Services Square LLC)",
   "license": "UNLICENSED",
   "scripts": {
     "prepare-www": "node scripts/prepare-www.mjs",
-    "configure-android": "node scripts/configure-android.mjs"
+    "configure-android": "node scripts/configure-android.mjs",
+    "configure-ios": "node scripts/configure-ios.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.6.0",
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.0",
     "@capacitor/filesystem": "8.1.5",
+    "@capacitor/ios": "8.6.0",
     "@capacitor/share": "8.0.3"
   },
   "devDependencies": {

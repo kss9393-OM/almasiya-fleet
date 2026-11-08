@@ -14,5 +14,12 @@
       "style": "DEFAULT",
       "hidden": false
     }
+  },
+  "ios": {
+    "backgroundColor": "#f2f4f7",
+    "contentInset": "never",
+    "scrollEnabled": true,
+    "allowsLinkPreview": false,
+    "webContentsDebuggingEnabled": false
   }
 }

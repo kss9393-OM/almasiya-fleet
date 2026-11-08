@@ -1,0 +1,175 @@
+# © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م
+# بناء تطبيق آيفون (iOS) تلقائياً على أجهزة macOS في GitHub بأحدث Xcode و iOS SDK.
+# - دائماً: بناء للمحاكي + تشغيل التطبيق على محاكي iPhone والتقاط صورة للتحقق (تُنشر في الإصدار ios-latest).
+# - إذا أُضيفت أسرار App Store Connect (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64, APPLE_TEAM_ID):
+#   يُوقَّع التطبيق ويُرفع تلقائياً إلى TestFlight للتثبيت على أجهزة آيفون.
+name: iOS App
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', 'desktop/**', '.github/workflows/windows.yml', '.github/workflows/android.yml', 'mobile/scripts/configure-android.mjs']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 2.0.${{ github.run_number }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Select the latest Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -v -i beta | sort -V | tail -1)
+          [ -z "$XC" ] && XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i ios
+
+      - name: Install Capacitor
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Copy web app into the iOS project
+        working-directory: mobile
+        run: npm run prepare-www
+
+      - name: Create iOS project
+        working-directory: mobile
+        run: npx cap add ios
+
+      - name: Generate app icon
+        working-directory: mobile
+        run: npx capacitor-assets generate --ios --iconBackgroundColor '#0f4c81'
+
+      - name: Configure iOS project (version, name, permissions, splash, signing team)
+        working-directory: mobile
+        run: |
+          ruby -e "require 'xcodeproj'" 2>/dev/null || sudo gem install xcodeproj --no-document
+          npm run configure-ios
+
+      - name: Sync plugins
+        working-directory: mobile
+        run: npx cap sync ios
+
+      - name: Build for iPhone Simulator
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build | tail -40
+          APP=$(ls -d "$RUNNER_TEMP"/dd/Build/Products/Release-iphonesimulator/App.app)
+          echo "SIM_APP=$APP" >> "$GITHUB_ENV"
+          echo "--- Arabic name:"; cat "$APP/ar.lproj/InfoPlist.strings"
+          echo "--- English name:"; cat "$APP/en.lproj/InfoPlist.strings"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' -c 'Print :CFBundleVersion' -c 'Print :MinimumOSVersion' "$APP/Info.plist"
+
+      - name: Run on iPhone Simulator and take screenshots
+        run: |
+          mkdir -p shots
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)['devices']
+          rts = sorted([k for k in d if 'iOS' in k], key=lambda k: [int(x) for x in k.split('iOS-')[-1].split('-')])
+          for rt in reversed(rts):
+              names = [x for x in d[rt] if x['name'].startswith('iPhone')]
+              pick = next((x for x in names if 'Pro Max' in x['name']), names[0] if names else None)
+              if pick: print(pick['udid'], '|', pick['name'], '|', rt.split('.')[-1]); break
+          ")
+          UDID=$(echo "$DEV" | cut -d'|' -f1 | xargs)
+          echo "Simulator: $DEV"
+          echo "SIM_DEVICE=$(echo "$DEV" | cut -d'|' -f2- | xargs)" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$SIM_APP"
+          xcrun simctl launch "$UDID" om.almasiya.fleet
+          sleep 25
+          xcrun simctl io "$UDID" screenshot shots/ios-login.png
+          # الشاشة الرئيسية بالعربية لإظهار اسم التطبيق «أسطول»
+          xcrun simctl terminate "$UDID" om.almasiya.fleet || true
+          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array ar
+          xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string ar_OM
+          xcrun simctl shutdown "$UDID"; xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b
+          sleep 15
+          xcrun simctl io "$UDID" screenshot shots/ios-home-ar.png
+          xcrun simctl launch "$UDID" om.almasiya.fleet
+          sleep 20
+          xcrun simctl io "$UDID" screenshot shots/ios-app-ar.png
+          ls -la shots
+          (cd "$(dirname "$SIM_APP")" && zip -qry "$GITHUB_WORKSPACE/FLEET-iOS-Simulator.zip" App.app)
+
+      - name: Sign and upload to TestFlight
+        if: env.ASC_KEY_ID != '' && env.ASC_ISSUER_ID != '' && env.ASC_KEY_P8_BASE64 != '' && env.APPLE_TEAM_ID != ''
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          mkdir -p ~/private_keys
+          KEY=~/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          echo "$ASC_KEY_P8_BASE64" | base64 -d > "$KEY"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/FLEET.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic $AUTH archive | tail -40
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/FLEET.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" $AUTH | tail -40
+          echo "TESTFLIGHT=yes" >> "$GITHUB_ENV"
+          rm -f "$KEY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build
+          path: |
+            shots/*.png
+            FLEET-iOS-Simulator.zip
+          if-no-files-found: ignore
+
+      - name: Publish (preview release with simulator screenshots)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: أسطول FLEET – آيفون ${{ env.VERSION_NAME }}
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          files: |
+            shots/ios-login.png
+            shots/ios-home-ar.png
+            shots/ios-app-ar.png
+            FLEET-iOS-Simulator.zip
+          body: |
+            تطبيق آيفون لنظام إدارة الأسطول والمعدات – الإصدار ${{ env.VERSION_NAME }}
+            بُني بأحدث Xcode و iOS SDK، وجُرّب على محاكي ${{ env.SIM_DEVICE }}.
+            ${{ env.TESTFLIGHT == 'yes' && '**رُفع هذا الإصدار إلى TestFlight** — يصل للمختبرين عبر تطبيق TestFlight على الآيفون.' || 'التثبيت على أجهزة آيفون يتم عبر TestFlight / App Store بعد إضافة بيانات حساب Apple Developer إلى أسرار المستودع.' }}
+
+            © جميع الحقوق محفوظة لـ مربع الخدمات ش.م.م – Services Square LLC
