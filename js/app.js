@@ -2267,7 +2267,7 @@
     },
     'about-share': async () => {
       const url = APP_CONFIG.updates.apkUrl;
-      const text = I18N.lang === 'en' ? 'Fleet & Equipment Management – Android app' : 'تطبيق أسطول الماسية لأندرويد – نظام إدارة الأسطول والمعدات';
+      const text = I18N.lang === 'en' ? 'FLEET – Fleet & Equipment Management (Android app)' : 'تطبيق أسطول (FLEET) لأندرويد – نظام إدارة الأسطول والمعدات';
       try {
         if (NP.Share) await NP.Share.share({ title: text, text, url, dialogTitle: text });
         else { await navigator.clipboard.writeText(url); toast('تم نسخ رابط التحميل', 'info'); }

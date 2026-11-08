@@ -52,6 +52,15 @@ patch('app/src/main/AndroidManifest.xml', (s) => s.includes('android.permission.
   : s.replace('<uses-permission android:name="android.permission.INTERNET" />',
     '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />'));
 
+// 2ب) اسم التطبيق: FLEET افتراضياً (الإنجليزية) و«أسطول» على الهواتف بالعربية
+mkdirSync(join(android, 'app/src/main/res/values-ar'), { recursive: true });
+writeFileSync(join(android, 'app/src/main/res/values-ar/strings.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">أسطول</string>
+    <string name="title_activity_main">أسطول</string>
+</resources>
+`);
+
 // 3) شاشة البداية دون تمدد:
 //    الصورة الكاملة (splash.png) تُمطّ لتملأ الشاشة، وشاشة S26 Ultra أطول من نسبة الصورة فيتمدد الشعار.
 //    الحل: خلفية لونية + الشعار في المنتصف بحجمه الأصلي (layer-list)، وشاشة البداية الأصلية في Android 12+.

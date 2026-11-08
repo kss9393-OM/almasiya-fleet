@@ -16,6 +16,9 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);
 
+// الإبقاء على مجلد البيانات القديم بعد تغيير الاسم إلى FLEET (لا تضيع الجلسة ولا البيانات المحفوظة)
+app.setPath('userData', path.join(app.getPath('appData'), 'Almasiya Fleet'));
+
 // نسخة واحدة فقط من التطبيق
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -30,7 +33,7 @@ function createWindow() {
     minHeight: 680,
     show: false,
     backgroundColor: '#f2f4f7',
-    title: 'أسطول الماسية',
+    title: isAr() ? 'أسطول' : 'FLEET',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {

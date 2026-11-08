@@ -1,6 +1,6 @@
 {
   "name": "almasiya-fleet-desktop",
-  "productName": "Almasiya Fleet",
+  "productName": "FLEET",
   "version": "2.0.0",
   "private": true,
   "description": "نظام إدارة الأسطول والمعدات – الماسية الدولية للمعدات",
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "om.almasiya.fleet",
-    "productName": "Almasiya Fleet",
+    "productName": "FLEET",
     "copyright": "© Services Square LLC — مربع الخدمات ش.م.م",
     "directories": {
       "output": "dist"
@@ -53,8 +53,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "أسطول الماسية",
-      "uninstallDisplayName": "أسطول الماسية – نظام إدارة الأسطول",
+      "shortcutName": "أسطول",
+      "uninstallDisplayName": "أسطول FLEET – نظام إدارة الأسطول",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "multiLanguageInstaller": true,

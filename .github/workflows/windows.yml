@@ -60,7 +60,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: windows-latest
-          name: أسطول الماسية – ويندوز
+          name: أسطول FLEET – ويندوز
           make_latest: false
           overwrite_files: true
           files: |
